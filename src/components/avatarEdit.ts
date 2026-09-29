@@ -134,12 +134,13 @@ async function handleAvatarEditorResult(opts: {
   opts.onUploaded?.();
 }
 
-// High-level helper: open the file picker + editor, then upload the result as a
-// contact photo (personal or suggested) or as the user's own fallback photo.
+// High-level helper: open the file picker + editor, then upload the result as
+// the user's own photo, their fallback photo or a contact photo (personal or
+// suggested).
 export function pickAvatarAndUpload(opts: {
   managers: AppManagers;
   isForum?: boolean;
-  mode: 'fallback' | {userId: UserId; suggest?: boolean};
+  mode: AvatarUploadMode;
   onUploadStart?: (progress: CancellablePromise<InputFile>) => void;
   onUploaded?: () => void;
 }) {

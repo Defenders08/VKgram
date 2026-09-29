@@ -162,6 +162,7 @@ if(USE_OWN_SOLID) {
 }
 
 export default defineConfig({
+  root: resolve(rootDir, '..'),
   plugins: [
     // devtools({
     //   /* features options - all disabled by default */

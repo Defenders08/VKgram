@@ -121,6 +121,11 @@ let openTabsLeftSidebar = false;
 // stores/foldersSidebar.ts when the class is toggled.
 let foldersSidebarShown = false;
 
+// Element #page-chats is laid out in when it doesn't span the whole window
+// (VKgram puts it beside its own sidebar). Null → the window. Handheld always
+// uses the window: the single-column slider fills the screen anyway.
+let layoutContainer: HTMLElement | null = null;
+
 (function loadUserPreferences() {
   const rawLeft = localStorage.getItem(STORAGE_KEY_LEFT);
   if(rawLeft != null) {
@@ -202,8 +207,28 @@ export function setFoldersSidebarShown(value: boolean): void {
   updateColumnWidths();
 }
 
+/**
+ * Lay the columns out in `el`'s width instead of the window's (null resets).
+ * The caller re-runs updateColumnWidths() when `el` resizes on its own.
+ */
+export function setColumnsLayoutContainer(el: HTMLElement | null): void {
+  if(layoutContainer === el) return;
+  layoutContainer = el;
+  updateColumnWidths();
+}
+
+function getLayoutContainerWidth(): number {
+  if(!layoutContainer || mediaSizes.isMobile) return 0;
+  return layoutContainer.clientWidth;
+}
+
+// Width the columns are laid out in: the container's, else the window's.
+function getLayoutWidth(): number {
+  return getLayoutContainerWidth() || getAppWindow().innerWidth;
+}
+
 function computeVisualLeftWidth(): number {
-  const vw = getAppWindow().innerWidth;
+  const vw = getLayoutWidth();
   const isMobile = mediaSizes.isMobile;
   const isFloatingLeft = mediaSizes.isLessThanFloatingLeftSidebar && !isMobile;
   const defaultColumnWidth = Math.min(vw, DEFAULT_COLUMN_WIDTH);
@@ -225,7 +250,7 @@ function computeVisualLeftWidth(): number {
 // tabs, it stays at the collapsed width — the expanded sidebar overlays the
 // chat instead of pushing it.
 function computeLayoutLeftWidth(): number {
-  const vw = getAppWindow().innerWidth;
+  const vw = getLayoutWidth();
   const isMobile = mediaSizes.isMobile;
   const isFloatingLeft = mediaSizes.isLessThanFloatingLeftSidebar && !isMobile;
   const defaultColumnWidth = Math.min(vw, DEFAULT_COLUMN_WIDTH);
@@ -237,7 +262,7 @@ function computeLayoutLeftWidth(): number {
 }
 
 function computeRightWidth(): number {
-  const vw = getAppWindow().innerWidth;
+  const vw = getLayoutWidth();
   if(mediaSizes.isMobile) return vw;
   return userPreferredRightWidth ?? Math.min(vw, DEFAULT_COLUMN_WIDTH);
 }
@@ -260,7 +285,8 @@ let installed = false;
 
 export default function updateColumnWidths(): void {
   const root = document.documentElement;
-  const vw = getAppWindow().innerWidth;
+  const containerWidth = getLayoutContainerWidth();
+  const vw = containerWidth || getAppWindow().innerWidth;
   const isMobile = mediaSizes.isMobile;
 
   // `html` carries the iOS safe-area inset as horizontal padding
@@ -276,7 +302,8 @@ export default function updateColumnWidths(): void {
   // a style read between the setProperty writes below (layout thrash).
   const rootStyle = getComputedStyle(root);
   const safeAreaPaddingX = (parseFloat(rootStyle.paddingLeft) || 0) + (parseFloat(rootStyle.paddingRight) || 0);
-  const availableWidth = vw - safeAreaPaddingX;
+  // A layout container already sits inside html's content box.
+  const availableWidth = containerWidth || vw - safeAreaPaddingX;
 
   const defaultColumnWidth = Math.min(vw, DEFAULT_COLUMN_WIDTH);
   const visualLeftWidth = computeVisualLeftWidth();

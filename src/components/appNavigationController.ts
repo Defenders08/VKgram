@@ -12,7 +12,8 @@ export type NavigationItem = {
     'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' |
     'global-search' | 'voice' | 'mobile-search' | 'filters' | 'global-search-focus' |
     'toast' | 'dropdown' | 'forum' | 'stories' | 'stories-focus' | 'topbar-search' |
-    'settings-popup' | 'settings-search' | 'monoforum' | 'inline-message-input',
+    'settings-popup' | 'settings-search' | 'monoforum' | 'inline-message-input' |
+    'vkgram-section',
   onPop: (canAnimate: boolean) => boolean | void,
   onEscape?: (event: KeyboardEvent) => boolean,
   noHistory?: boolean,
@@ -422,6 +423,19 @@ export class AppNavigationController {
     } else {
       history.replaceState(this.id, '', url);
     }
+  }
+
+  /**
+   * Change the current entry's URL (e.g. a search param) without a reload.
+   * Queued with the other history modifications so it lands on the entry
+   * that is current by then; the hash is left as it is.
+   */
+  public updateUrl(modify: (url: URL) => void) {
+    this.modifyHistoryFromEvent(() => {
+      const url = new URL(location.href);
+      modify(url);
+      this.replaceState(url);
+    });
   }
 
   public removeItem(item: NavigationItem) {

@@ -1,0 +1,993 @@
+/*
+ * VKgram — base visual layer (old VK, ~2012–2016).
+ *
+ * Everything is scoped under `.vkgram` so the Telegram Web K styles stay
+ * untouched. The tokens are exposed both as SCSS variables (for this file)
+ * and as CSS custom properties (for future VKgram components).
+ */
+
+// * Palette
+$vk-blue: #597da3;              // header / primary
+$vk-blue-dark: #4a6e94;         // header hover / pressed
+$vk-link: #2b587a;              // links, menu items
+$vk-page-bg: #edeef0;           // grey page background
+$vk-block-bg: #ffffff;          // white content blocks
+$vk-border: #dae1e8;            // thin block borders
+$vk-divider: #e7e8ec;           // separators inside blocks
+$vk-hover-bg: #e1e7ed;          // menu item hover
+$vk-text: #000000;
+$vk-text-secondary: #828282;
+$vk-header-text: #ffffff;
+
+// * Metrics
+$vk-font-family: tahoma, verdana, arial, sans-serif;
+$vk-font-size: 12px;
+$vk-line-height: 1.4;
+$vk-radius: 2px;
+$vk-header-height: 42px;
+$vk-sidebar-width: 150px;
+$vk-mobile-header-height: 44px;
+$vk-mobile-nav-height: 48px;
+$vk-gap: 10px;
+$vk-gap-small: 6px;
+
+.vkgram {
+  --vk-blue: #{$vk-blue};
+  --vk-blue-dark: #{$vk-blue-dark};
+  --vk-link: #{$vk-link};
+  --vk-page-bg: #{$vk-page-bg};
+  --vk-block-bg: #{$vk-block-bg};
+  --vk-border: #{$vk-border};
+  --vk-divider: #{$vk-divider};
+  --vk-hover-bg: #{$vk-hover-bg};
+  --vk-text: #{$vk-text};
+  --vk-text-secondary: #{$vk-text-secondary};
+  --vk-font-family: #{$vk-font-family};
+  --vk-font-size: #{$vk-font-size};
+  --vk-radius: #{$vk-radius};
+  --vk-header-height: #{$vk-header-height};
+  --vk-sidebar-width: #{$vk-sidebar-width};
+  --vk-mobile-header-height: #{$vk-mobile-header-height};
+  --vk-mobile-nav-height: #{$vk-mobile-nav-height};
+  --vk-gap: #{$vk-gap};
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  // Positioned (no z-index — Web K's own layers keep their stacking) so the
+  // VKgram chrome paints after body-level absolute layers earlier in the DOM.
+  position: relative;
+  background-color: $vk-page-bg;
+  color: $vk-text;
+  font-family: $vk-font-family;
+  font-size: $vk-font-size;
+  line-height: $vk-line-height;
+
+  a,
+  .vk-link {
+    color: $vk-link;
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  // Shared white block — the main building unit of old VK pages.
+  .vk-block {
+    background-color: $vk-block-bg;
+    border: 1px solid $vk-border;
+    border-radius: $vk-radius;
+  }
+}
+
+// * Header
+
+.vk-header {
+  flex: 0 0 auto;
+  height: $vk-header-height;
+  background-color: $vk-blue;
+  border-bottom: 1px solid $vk-blue-dark;
+  color: $vk-header-text;
+  position: relative;
+  z-index: 2;
+
+  &-inner {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 $vk-gap;
+  }
+
+  &-logo {
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: $vk-header-text;
+    user-select: none;
+  }
+
+  &-spacer {
+    flex: 1 1 auto;
+  }
+
+  &-menu-button {
+    width: 36px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: $vk-radius;
+    background: transparent;
+    color: $vk-header-text;
+    font-size: 20px;
+    line-height: 32px;
+    cursor: pointer;
+
+    &:hover,
+    &.is-active {
+      background-color: $vk-blue-dark;
+    }
+  }
+
+  &.is-mobile {
+    height: $vk-mobile-header-height;
+
+    .vk-header-inner {
+      padding: 0 $vk-gap-small 0 $vk-gap;
+    }
+  }
+}
+
+// * Desktop layout
+
+.vk-desktop-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  .vk-desktop-main {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: $vk-gap $vk-gap 0 0;
+  }
+}
+
+.vk-sidebar {
+  flex: 0 0 $vk-sidebar-width;
+  width: $vk-sidebar-width;
+  padding: 0 $vk-gap-small;
+  overflow-y: auto;
+
+  &-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  &-item {
+    display: block;
+    width: 100%;
+    padding: 4px 6px;
+    border: none;
+    border-radius: $vk-radius;
+    background: transparent;
+    color: $vk-link;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+
+    &:hover {
+      background-color: $vk-hover-bg;
+    }
+
+    &.is-active {
+      font-weight: bold;
+    }
+  }
+
+  &-divider {
+    height: 1px;
+    margin: $vk-gap-small 6px;
+    background-color: $vk-border;
+  }
+}
+
+// * Content area (shared by desktop & mobile)
+
+.vk-content {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background-color: $vk-block-bg;
+
+  // Stable holder of the chat wallpaper layer + the Web K shell; moved as one
+  // node between the desktop and mobile layouts.
+  &-host {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+
+    // The embedded Web K shell (`#page-chats`) fills the content area exactly,
+    // whatever its own `.whole` / `.page-chats` rules say about height.
+    > .page-chats {
+      position: absolute;
+      inset: 0;
+      width: auto;
+      height: auto;
+      min-height: 0;
+    }
+
+    // Another section is open: nothing of the messenger may be painted.
+    // Not `visibility: hidden` — Web K sets `visibility: visible` on dozens of
+    // descendants (stories list, the floating compose button, menus…) and
+    // they would show through. `content-visibility: hidden` skips rendering
+    // the whole subtree whatever its own styles, fixed-position ones
+    // included, yet keeps its layout state and scroll positions (unlike
+    // `display: none`). `inert` is set in JS.
+    &.is-hidden {
+      content-visibility: hidden;
+
+      @supports not (content-visibility: hidden) {
+        display: none;
+      }
+    }
+  }
+
+  &-placeholder {
+    padding: 20px;
+    color: $vk-text-secondary;
+    text-align: center;
+  }
+}
+
+.vk-desktop-layout .vk-content {
+  border: 1px solid $vk-border;
+  border-bottom: none;
+  border-radius: $vk-radius $vk-radius 0 0;
+}
+
+// * Section pages (placeholders for now)
+
+.vk-page {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: $vk-gap;
+  background-color: $vk-page-bg;
+
+  &-block {
+    padding: 12px 15px;
+  }
+
+  &-title {
+    margin: 0 0 $vk-gap-small;
+    font-size: 14px;
+    font-weight: bold;
+    color: $vk-link;
+  }
+
+  &-text {
+    margin: 0 0 4px;
+
+    &-secondary {
+      color: $vk-text-secondary;
+    }
+  }
+}
+
+// * Shared controls
+
+.vkgram {
+  .vk-block-title {
+    margin: 0 0 $vk-gap-small;
+    padding-bottom: 4px;
+    border-bottom: 1px solid $vk-divider;
+    font-size: 12px;
+    font-weight: bold;
+    color: $vk-link;
+  }
+
+  .vk-button {
+    padding: 5px 12px;
+    border: 1px solid $vk-blue-dark;
+    border-radius: $vk-radius;
+    background-color: $vk-blue;
+    color: #fff;
+    font: inherit;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background-color: $vk-blue-dark;
+    }
+
+    &:disabled {
+      opacity: .6;
+      cursor: default;
+    }
+
+    &-secondary {
+      border-color: $vk-border;
+      background-color: $vk-hover-bg;
+      color: $vk-link;
+
+      &:hover:not(:disabled) {
+        background-color: $vk-border;
+      }
+    }
+  }
+
+  .vk-link-button {
+    padding: 0;
+    border: none;
+    background: none;
+    color: $vk-link;
+    font: inherit;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      text-decoration: underline;
+    }
+
+    &:disabled {
+      color: $vk-text-secondary;
+      cursor: default;
+    }
+  }
+}
+
+// * Lists of people and channels («Друзья», «Каналы»)
+
+.vkgram {
+  .vk-search {
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0 0 $vk-gap-small;
+    padding: 5px 8px;
+    border: 1px solid $vk-border;
+    border-radius: $vk-radius;
+    background-color: $vk-block-bg;
+    color: $vk-text;
+    font: inherit;
+  }
+
+  .vk-list-count {
+    font-weight: normal;
+  }
+
+  .vk-list-empty {
+    margin: $vk-gap 0 0;
+  }
+
+  .vk-list-sentinel {
+    height: 1px;
+  }
+
+  .vk-peer-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .vk-peer-row {
+    display: flex;
+    align-items: center;
+    gap: $vk-gap;
+    padding: 8px 0;
+    border-top: 1px solid $vk-divider;
+
+    &:first-child {
+      border-top: none;
+    }
+
+    &-clickable {
+      cursor: pointer;
+
+      &:hover {
+        background-color: $vk-page-bg;
+      }
+    }
+  }
+
+  .vk-peer-avatar {
+    flex: 0 0 auto;
+    display: block;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+
+  .vk-peer-info {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .vk-peer-title-line {
+    display: flex;
+    align-items: baseline;
+    gap: $vk-gap-small;
+    min-width: 0;
+  }
+
+  .vk-peer-name {
+    overflow: hidden;
+    max-width: 100%;
+    font-weight: bold;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .vk-peer-flag {
+    flex: 0 0 auto;
+    font-size: 11px;
+  }
+
+  .vk-peer-preview {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    // Web K's own preview parts are inline spans
+    .dialog-subtitle-span {
+      display: inline;
+    }
+  }
+
+  .vk-peer-actions {
+    flex: 0 0 auto;
+  }
+
+  .vk-peer-meta {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .vk-badge {
+    min-width: 18px;
+    padding: 0 6px;
+    border-radius: 9px;
+    background-color: $vk-blue;
+    color: #fff;
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+
+    &-muted {
+      background-color: #b0b6bd;
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .vkgram .vk-peer-row:not(.vk-peer-row-clickable) {
+    flex-wrap: wrap;
+
+    .vk-peer-actions {
+      flex-basis: 100%;
+      padding-left: 58px;
+    }
+  }
+}
+
+// * «Моя страница»
+
+.vk-profile {
+  display: flex;
+  flex-direction: column;
+  gap: $vk-gap;
+
+  > .vk-block {
+    flex: 0 0 auto;
+    padding: 12px 15px;
+  }
+
+  &-header {
+    display: flex;
+    gap: 15px;
+  }
+
+  &-avatar {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $vk-gap-small;
+  }
+
+  &-main {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &-name {
+    margin: 0;
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  &-username {
+    color: $vk-text-secondary;
+  }
+
+  &-about {
+    margin: $vk-gap-small 0 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  &-info {
+    margin: $vk-gap 0 0;
+    padding-top: $vk-gap-small;
+    border-top: 1px solid $vk-divider;
+
+    &-row {
+      display: flex;
+      gap: $vk-gap;
+      padding: 2px 0;
+
+      dt {
+        flex: 0 0 130px;
+        color: $vk-text-secondary;
+      }
+
+      dd {
+        flex: 1 1 auto;
+        min-width: 0;
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+    }
+  }
+
+  &-actions {
+    display: flex;
+    gap: $vk-gap-small;
+    margin-top: $vk-gap;
+  }
+
+  &-edit-fields {
+    display: flex;
+    flex-direction: column;
+    gap: $vk-gap;
+    max-width: 400px;
+    padding-top: $vk-gap-small;
+  }
+
+  // a label/value list outside the header (music, settings)
+  &-info-list {
+    margin: 0;
+
+    .vk-profile-info-row {
+      display: flex;
+      gap: $vk-gap;
+      padding: 2px 0;
+
+      dt {
+        flex: 0 0 130px;
+        color: $vk-text-secondary;
+      }
+
+      dd {
+        flex: 1 1 auto;
+        min-width: 0;
+        margin: 0;
+      }
+    }
+  }
+
+  &-channel {
+    display: flex;
+    align-items: center;
+    gap: $vk-gap;
+
+    &-info {
+      min-width: 0;
+    }
+
+    &-title {
+      font-weight: bold;
+    }
+  }
+}
+
+// story previews (Web K's wrapStoryMedia inside)
+.vk-story-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: $vk-gap-small;
+}
+
+.vk-story-thumb {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  border-radius: $vk-radius;
+  background-color: $vk-hover-bg;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid $vk-blue;
+    outline-offset: 1px;
+  }
+
+  &-media,
+  img,
+  video,
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+// Web K's StarGiftsGrid keeps its own item look; only the width is ours
+.vk-gift-grid {
+  max-width: 600px;
+}
+
+// * «Настройки»
+
+.vk-settings {
+  &-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $vk-gap;
+    width: 100%;
+    padding: 7px 6px;
+    border: none;
+    border-bottom: 1px solid $vk-divider;
+    background: transparent;
+    color: $vk-link;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+
+    &:hover {
+      background-color: $vk-hover-bg;
+    }
+  }
+
+  &-status {
+    flex: 0 0 auto;
+    padding: 0 5px;
+    border-radius: $vk-radius;
+    font-size: 10px;
+    font-weight: normal;
+    line-height: 16px;
+
+    &.is-real {
+      background-color: #dff0d8;
+      color: #3c763d;
+    }
+
+    &.is-partial {
+      background-color: #fcf8e3;
+      color: #8a6d3b;
+    }
+
+    &.is-todo {
+      background-color: $vk-hover-bg;
+      color: $vk-text-secondary;
+    }
+  }
+
+  &-breadcrumbs {
+    margin-bottom: $vk-gap-small;
+    color: $vk-text-secondary;
+  }
+
+  &-fieldset {
+    margin: 0 0 $vk-gap;
+    padding: 0;
+    border: none;
+  }
+
+  &-legend {
+    margin-bottom: $vk-gap-small;
+    padding: 0;
+    font-weight: bold;
+  }
+
+  &-radio,
+  &-checkbox {
+    display: flex;
+    align-items: center;
+    gap: $vk-gap-small;
+    padding: 3px 0;
+    cursor: pointer;
+  }
+
+  &-session {
+    padding: $vk-gap-small 0;
+    border-bottom: 1px solid $vk-divider;
+  }
+}
+
+// * Mobile layout
+
+.vk-mobile-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.vk-mobile-body {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+// «Ещё» — the sections that don't fit the bottom bar
+.vk-mobile-more {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  // above Web K's column layers (they go up to 4)
+  z-index: 5;
+  padding: $vk-gap-small;
+  border-radius: 0;
+  border-inline: none;
+  border-bottom: none;
+
+  .vk-sidebar-item {
+    padding: 8px 10px;
+  }
+}
+
+.vk-mobile-nav {
+  flex: 0 0 auto;
+  display: flex;
+  height: $vk-mobile-nav-height;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-sizing: content-box;
+  background-color: $vk-block-bg;
+  border-top: 1px solid $vk-border;
+  position: relative;
+  z-index: 2;
+
+  &-item {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 2px;
+    border: none;
+    background: transparent;
+    color: $vk-text-secondary;
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.is-active {
+      color: $vk-blue;
+      font-weight: bold;
+      box-shadow: inset 0 2px 0 $vk-blue;
+    }
+  }
+}
+
+// * Messenger pieces Web K keeps outside `#page-chats`, hidden while another
+// * section is open (`vkgram-messages-active` on <html> follows the section).
+// Only these two belong to the messenger itself; popups, toasts, the media
+// viewer and the stories viewer stay global — other sections need them too.
+html.is-vkgram:not(.vkgram-messages-active) {
+  // dim layer under the left column's open tabs (index.html, body level)
+  .sidebar-left-overlay,
+  // fullscreen emoji / reaction effects of the open chat (appImManager puts
+  // it straight into <body> on desktop)
+  body > .emoji-animation-container {
+    display: none;
+  }
+}
+
+// * Channel page («Каналы» → a channel). Wireframe styles only.
+
+.vkgram {
+  .vk-channel-page {
+    display: flex;
+    flex-direction: column;
+    gap: $vk-gap;
+  }
+
+  .vk-channel-back {
+    align-self: flex-start;
+  }
+
+  .vk-channel-header {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+
+    @media (max-width: 600px) {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+  }
+
+  .vk-channel-avatar {
+    flex: none;
+  }
+
+  .vk-channel-header-text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: $vk-gap-small;
+  }
+
+  .vk-channel-description {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .vk-channel-media-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .vk-channel-links-list {
+    margin: 0;
+    padding-left: 16px;
+    overflow-wrap: anywhere;
+  }
+
+  .vk-channel-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: $vk-gap-small;
+  }
+
+  .vk-channel-posts {
+    display: flex;
+    flex-direction: column;
+    gap: $vk-gap;
+  }
+
+  .vk-channel-post {
+    display: flex;
+    flex-direction: column;
+    gap: $vk-gap-small;
+    padding: $vk-gap 0;
+    border-top: 1px solid $vk-divider;
+    min-width: 0;
+  }
+
+  .vk-channel-post-header {
+    display: flex;
+    gap: $vk-gap;
+    align-items: center;
+  }
+
+  .vk-channel-post-author {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .vk-channel-post-name {
+    font-weight: bold;
+    color: $vk-link;
+  }
+
+  .vk-channel-post-content {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  .vk-channel-post-media {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .vk-channel-post-photo,
+  .vk-channel-post-video {
+    cursor: pointer;
+    max-width: 100%;
+  }
+
+  .vk-channel-post-link {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 10px;
+    border-left: 2px solid $vk-blue;
+    color: $vk-text;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+
+  .vk-channel-post-link-title {
+    font-weight: bold;
+    color: $vk-link;
+  }
+
+  .vk-channel-post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $vk-gap;
+    align-items: center;
+  }
+
+  .vk-channel-post-open {
+    margin-left: auto;
+  }
+}
+
+// * Web K's media wrappers are styled only inside a chat `.bubble` (thumbnail
+// * position, img / video sizing). Outside of one they need the same basics,
+// * or a preview drops out of its box and covers the blocks below it.
+
+.vkgram {
+  .vk-channel-post-media {
+    position: relative;
+    isolation: isolate; // whatever a wrapper stacks stays inside its own block
+
+    .media-container {
+      position: relative;
+      overflow: hidden;
+      max-width: 100%;
+      background-color: $vk-divider;
+    }
+
+    .media-container-aspecter {
+      position: relative;
+      width: 100% !important;
+      height: 100% !important;
+      margin: 0;
+    }
+
+    .thumbnail,
+    .canvas-thumbnail {
+      position: absolute;
+      inset: 0;
+    }
+
+    .media-container img:not(.emoji):not(.custom-emoji-placeholder),
+    .media-container video,
+    .media-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    // a document / audio row keeps its own height (it is a Web K Row)
+    .audio,
+    .document {
+      position: relative;
+      max-width: 100%;
+      overflow: hidden;
+    }
+  }
+
+  .vk-channel-media-grid .vk-channel-post-media {
+    flex: none;
+  }
+}

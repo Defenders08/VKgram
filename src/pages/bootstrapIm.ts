@@ -5,6 +5,7 @@ import isNativeVoiceRecorderSupported from '@helpers/voiceRecorder/isNativeSuppo
 import rootScope from '@lib/rootScope';
 
 import {disposeActiveAuthFlow} from '@/pages/mountAuthFlow';
+import {isVKgramEnabled, mountVKResponsiveLayout} from '@/vkgram/layouts/VKResponsiveLayout';
 
 let bootstrapped = false;
 
@@ -49,6 +50,18 @@ export async function bootstrapIm(): Promise<void> {
     (window as any).Recorder = recorder.default;
   }
   appDialogsManager.start();
+
+  // VKgram: wrap the Web K shell into the VK layout. Right after start() —
+  // same task, nothing painted yet — because start() attaches the chat
+  // wallpaper to <body> and the layout takes it over. Any failure leaves the
+  // plain Web K UI in place.
+  if(pageChatsEl && isVKgramEnabled()) {
+    try {
+      mountVKResponsiveLayout(pageChatsEl);
+    } catch(err) {
+      console.error('VKgram: layout mount failed, falling back to Web K UI', err);
+    }
+  }
   // start() toggles body.is-left-column-shown synchronously
   // (appImManager.selectTab(CHATLIST)). The .main-column transform/opacity
   // transition in _chats.scss is gated by :not(.has-auth-pages) so the bar
