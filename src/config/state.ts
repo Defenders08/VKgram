@@ -57,6 +57,7 @@ export type AutoDownloadPeerTypeSettings = {
 };
 
 export type StateSettings = {
+  audioChannelTabs?: PeerId[],
   messagesTextSize: number,
   distanceUnit: 'kilometers' | 'miles',
   // Only written once the reader flips a story's weather widget; until then the unit follows the
@@ -558,9 +559,11 @@ export const SETTINGS_INIT: StateSettings = {
       audio: 1
     },
     loop: false,
+    shuffle: false,
     round: false
   },
   chatContextMenuHintWasShown: false,
+  audioChannelTabs: [] as PeerId[],
   seenTooltips: {
     storySound: false,
     noForwards: false,

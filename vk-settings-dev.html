@@ -1,0 +1,124 @@
+<!doctype html>
+<!-- Dev replica of «Настроек»: the category tabs stand in the right rail on desktop
+     (the layout of «Новости» / «Друзья»), a phone keeps the strip above the content.
+     The exact DOM the page renders, over vk-base.scss only, no app.
+     Served by `pnpm start` at /vk-settings-dev.html — desktop as is, a phone in a
+     ~375px wide viewport. -->
+<html class="is-vkgram">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VKgram — вкладки «Настроек» (dev)</title>
+  <script type="module" src="/vk-settings-dev.ts"></script>
+  <style>
+    html, body { margin: 0; }
+    /* the app shell on a dev page: the real app fixes .vkgram to the viewport */
+    .vkgram { min-height: 100vh; }
+    /* the real page hides the mobile strip on a desktop (Show isDesktop) — the static
+       replica repeats it with CSS */
+    @media (min-width: 601px) {
+      .vk-settings-mobile-tabs { display: none; }
+    }
+    .vk-settings-dev-body { position: absolute; inset: 0; display: flex; flex-direction: column; }
+    .vk-settings-dev-content { flex: 1 1 auto; overflow-y: auto; }
+    .vk-settings-dev-buttons { display: flex; gap: 8px; padding: 10px; }
+    .vk-settings-dev-buttons button { flex: none; padding: 10px; }
+  </style>
+</head>
+<body>
+<div class="vkgram">
+  <div class="vk-settings-dev-body">
+
+    <header class="vk-header">
+      <div class="vk-header-inner">
+        <button type="button" class="vk-header-logo" title="Новости" aria-label="Новости">ВКГРАМ</button>
+        <div class="vk-header-spacer"></div>
+        <div class="vk-header-search">
+          <input type="text" class="vk-search" placeholder="Поиск людей и сообществ" aria-label="Поиск">
+        </div>
+      </div>
+    </header>
+
+    <main class="vk-settings-dev-content">
+      <div class="vk-page vk-settings">
+        <div class="vk-settings-layout">
+          <div class="vk-settings-main">
+            <section class="vk-block vk-page-block" aria-labelledby="vk-settings-title">
+              <h1 id="vk-settings-title" class="vk-page-title vk-visually-hidden">Настройки</h1>
+
+              <!-- the mobile strip: the real page mounts it below 601px -->
+              <div class="vk-settings-mobile-tabs">
+                <div class="vk-tabs">
+                  <div class="vk-tabs-list" role="tablist" aria-label="Разделы настроек">
+                    <button type="button" class="vk-tab is-active" id="vk-settings-mobile-tab-profile" role="tab" aria-selected="true" aria-controls="vk-settings-panel-profile" tabindex="0">Профиль</button>
+                    <button type="button" class="vk-tab" id="vk-settings-mobile-tab-privacy" role="tab" aria-selected="false" aria-controls="vk-settings-panel-privacy" tabindex="-1">Приватность</button>
+                    <button type="button" class="vk-tab" id="vk-settings-mobile-tab-notifications" role="tab" aria-selected="false" aria-controls="vk-settings-panel-notifications" tabindex="-1">Уведомления</button>
+                    <button type="button" class="vk-tab" id="vk-settings-mobile-tab-chats" role="tab" aria-selected="false" aria-controls="vk-settings-panel-chats" tabindex="-1">Чаты</button>
+                    <button type="button" class="vk-tab" id="vk-settings-mobile-tab-media" role="tab" aria-selected="false" aria-controls="vk-settings-panel-media" tabindex="-1">Медиа</button>
+                    <button type="button" class="vk-tab" id="vk-settings-mobile-tab-app" role="tab" aria-selected="false" aria-controls="vk-settings-panel-app" tabindex="-1">Приложение</button>
+                    <button type="button" class="vk-tab" id="vk-settings-mobile-tab-account" role="tab" aria-selected="false" aria-controls="vk-settings-panel-account" tabindex="-1">Аккаунт</button>
+                  </div>
+                </div>
+              </div>
+
+              <div id="vk-settings-panel-profile" role="tabpanel" aria-labelledby="vk-settings-mobile-tab-profile vk-settings-desktop-tab-profile">
+                <section class="vk-settings-item" aria-labelledby="vk-settings-item-edit">
+                  <h2 id="vk-settings-item-edit" class="vk-block-title">Изменить профиль</h2>
+                  <p class="vk-page-text vk-page-text-secondary">Имя пользователя — здесь же, с проверкой, свободно ли имя.</p>
+                  <!-- the real form renders here bare (VKProfileEditForm variant="bare");
+                       its Web K input fields cannot be replicated over vk-base.scss alone -->
+                  <p class="vk-page-text vk-page-text-secondary">Загрузка…</p>
+                </section>
+                <section class="vk-settings-item" aria-labelledby="vk-settings-item-birthday">
+                  <h2 id="vk-settings-item-birthday" class="vk-block-title">Дата рождения</h2>
+                  <p class="vk-page-text vk-page-text-secondary">1 января 1990</p>
+                </section>
+                <section class="vk-settings-item" aria-labelledby="vk-settings-item-channel">
+                  <h2 id="vk-settings-item-channel" class="vk-block-title">Личный канал</h2>
+                  <!-- a static sample: the real buttons work in the app, the replica has no app behind it -->
+                  <p class="vk-page-text vk-page-text-secondary">У вас пока нет личного канала.</p>
+                  <div class="vk-profile-actions">
+                    <button type="button" class="vk-button">Выбрать канал</button>
+                    <button type="button" class="vk-button vk-button-secondary">Создать канал</button>
+                  </div>
+                </section>
+              </div>
+            </section>
+          </div>
+
+          <!-- the right rail: the real page mounts it from 601px; Telegram's
+               settings first, VKgram's own under them -->
+          <aside class="vk-settings-side" aria-label="Разделы настроек">
+            <section class="vk-block vk-settings-side-block" aria-labelledby="vk-settings-side-telegram-title">
+              <h2 id="vk-settings-side-telegram-title" class="vk-block-title">Телеграм</h2>
+              <div class="vk-tabs">
+                <div class="vk-tabs-list" role="tablist" aria-label="Настройки Телеграма">
+                  <button type="button" class="vk-tab is-active" id="vk-settings-desktop-tab-profile" role="tab" aria-selected="true" aria-controls="vk-settings-panel-profile" tabindex="0">Профиль</button>
+                  <button type="button" class="vk-tab" id="vk-settings-desktop-tab-privacy" role="tab" aria-selected="false" aria-controls="vk-settings-panel-privacy" tabindex="-1">Приватность</button>
+                  <button type="button" class="vk-tab" id="vk-settings-desktop-tab-notifications" role="tab" aria-selected="false" aria-controls="vk-settings-panel-notifications" tabindex="-1">Уведомления</button>
+                  <button type="button" class="vk-tab" id="vk-settings-desktop-tab-chats" role="tab" aria-selected="false" aria-controls="vk-settings-panel-chats" tabindex="-1">Чаты</button>
+                  <button type="button" class="vk-tab" id="vk-settings-desktop-tab-media" role="tab" aria-selected="false" aria-controls="vk-settings-panel-media" tabindex="-1">Медиа</button>
+                  <button type="button" class="vk-tab" id="vk-settings-desktop-tab-account" role="tab" aria-selected="false" aria-controls="vk-settings-panel-account" tabindex="-1">Аккаунт</button>
+                </div>
+              </div>
+            </section>
+            <section class="vk-block vk-settings-side-block" aria-labelledby="vk-settings-side-vkgram-title">
+              <h2 id="vk-settings-side-vkgram-title" class="vk-block-title">VKgram</h2>
+              <div class="vk-tabs">
+                <div class="vk-tabs-list" role="tablist" aria-label="Настройки VKgram">
+                  <button type="button" class="vk-tab" id="vk-settings-desktop-tab-app" role="tab" aria-selected="false" aria-controls="vk-settings-panel-app" tabindex="0">Приложение</button>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </main>
+
+    <div class="vk-settings-dev-buttons">
+      <button type="button" id="night-toggle">Ночь</button>
+    </div>
+    </div>
+</div>
+</body>
+</html>

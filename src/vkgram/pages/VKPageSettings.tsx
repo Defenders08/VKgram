@@ -1,19 +1,23 @@
-import {Component, createMemo, For, JSX, Show} from 'solid-js';
+import {Component, createSignal, For, onCleanup, onMount, Show} from 'solid-js';
 import type {User, UserFull} from '@layer';
 import rootScope from '@lib/rootScope';
 import {useUser} from '@stores/peers';
 import {useFullPeer} from '@stores/fullPeers';
-import {useAppSettings} from '@stores/appSettings';
-import type {LiteModeKey} from '@helpers/liteMode';
-import {openWebKLeftTab} from '@/vkgram/webk';
+import {confirmVKLogout} from '@/vkgram/logout';
 import {setVKSettingsRoute, vkSettingsRoute} from '@/vkgram/pages/settings/route';
+import VKTabs, {VKTabItem} from '@/vkgram/components/VKTabs';
 import VKSettingsPrivacy from '@/vkgram/pages/settings/VKSettingsPrivacy';
-import VKSettingsNotifications from '@/vkgram/pages/settings/VKSettingsNotifications';
 import VKSettingsLanguage from '@/vkgram/pages/settings/VKSettingsLanguage';
 import VKSettingsSessions from '@/vkgram/pages/settings/VKSettingsSessions';
+import VKSettingsConfig from '@/vkgram/pages/settings/VKSettingsConfig';
+import VKSettingsMobileNav from '@/vkgram/pages/settings/VKSettingsMobileNav';
+import VKSettingsAutoDownload from '@/vkgram/pages/settings/VKSettingsAutoDownload';
+import {openVKCacheLimit} from '@/vkgram/components/VKCacheLimitModal';
+import VKSettingsStorage from '@/vkgram/pages/settings/VKSettingsStorage';
 import VKProfileEditForm from '@/vkgram/pages/profile/VKProfileEditForm';
 import VKProfileBirthday from '@/vkgram/pages/profile/VKProfileBirthday';
 import VKProfilePersonalChannel from '@/vkgram/pages/profile/VKProfilePersonalChannel';
+import VKGiftsPrivacy from '@/vkgram/pages/settings/VKGiftsPrivacy';
 
 /**
  * REAL    — works here, through Web K's managers / stores.
@@ -32,16 +36,22 @@ type VKSettingItem = {
   webK?: {title: string, open: () => void}
 };
 
+/**
+ * telegram — the settings that exist in Telegram itself (its account, screens
+ *           and switches — profile, privacy, chats…): VKgram renders its own
+ *           UI over them.
+ * vkgram  — VKgram's own features that Telegram does not have: the local
+ *           settings, the config export/import and so on.
+ */
+type VKSettingGroup = 'telegram' | 'vkgram';
+
 type VKSettingCategory = {
   id: string,
   title: string,
+  group: VKSettingGroup,
+  // a category rendered as one piece instead of headed items («Сессии», «Язык»)
+  content?: Component,
   items: VKSettingItem[]
-};
-
-const STATUS_TITLES: {[status in VKSettingStatus]: string} = {
-  REAL: 'Работает',
-  PARTIAL: 'Частично',
-  TODO: 'Скоро'
 };
 
 // * Item contents
@@ -51,10 +61,12 @@ function ProfileEditContent() {
   const fullPeer = useFullPeer(rootScope.myId);
   return (
     <Show when={user() && fullPeer()} fallback={<p class="vk-page-text vk-page-text-secondary">Загрузка…</p>}>
+      {/* bare: the item above holds the block and the title */}
       <VKProfileEditForm
         user={user()}
         userFull={fullPeer() as UserFull.userFull}
         onDone={() => setVKSettingsRoute({category: 'profile'})}
+        variant="bare"
       />
     </Show>
   );
@@ -71,26 +83,20 @@ function BirthdayContent() {
 
 function PersonalChannelContent() {
   const fullPeer = useFullPeer(rootScope.myId);
-  return <VKProfilePersonalChannel channelId={(fullPeer() as UserFull.userFull)?.personal_channel_id?.toChatId()} />;
+  // bare: the item above holds the block and the title
+  return <VKProfilePersonalChannel channelId={(fullPeer() as UserFull.userFull)?.personal_channel_id?.toChatId()} bare />;
 }
 
-// Web K's power-saving switches: liteMode[key] === true means "turned off"
-function LiteToggle(props: {liteKey: LiteModeKey, title: string}) {
-  const [appSettings, setAppSettings] = useAppSettings();
-  const isAll = () => !!appSettings.liteMode?.all;
+// the whole «Сессии» tab: the sessions list and the way out of the account
+function SessionsContent() {
   return (
-    <label class="vk-settings-checkbox">
-      <input
-        type="checkbox"
-        disabled={isAll()}
-        checked={!isAll() && !appSettings.liteMode?.[props.liteKey]}
-        onChange={(e) => setAppSettings('liteMode', props.liteKey, !e.currentTarget.checked)}
-      />
-      {props.title}
-      <Show when={isAll()}>
-        <span class="vk-page-text-secondary"> (выключено режимом энергосбережения)</span>
-      </Show>
-    </label>
+    <div class="vk-settings-item">
+      <p class="vk-page-text vk-page-text-secondary">Устройство в Telegram — это активный сеанс, поэтому список здесь один.</p>
+      <VKSettingsSessions />
+      <div class="vk-profile-actions">
+        <button type="button" class="vk-button vk-button-danger" onClick={() => confirmVKLogout()}>Выйти из аккаунта</button>
+      </div>
+    </div>
   );
 }
 
@@ -102,23 +108,25 @@ const privacyItem = (id: string, title: string, key: Parameters<typeof VKSetting
   ...rest
 });
 
-const logOut = async() => {
-  const {default: showLogOutPopup} = await import('@components/popups/logOut');
-  showLogOutPopup();
-};
-
 const CATEGORIES: VKSettingCategory[] = [{
   id: 'profile',
   title: 'Профиль',
+  group: 'telegram',
   items: [
-    {id: 'edit', title: 'Изменить профиль', status: 'REAL', content: ProfileEditContent},
-    {id: 'username', title: 'Имя пользователя', status: 'REAL', note: 'Меняется в общей форме профиля, с проверкой, свободно ли имя.', content: ProfileEditContent},
+    {
+      id: 'edit',
+      title: 'Изменить профиль',
+      status: 'REAL',
+      note: 'Имя пользователя — здесь же, с проверкой, свободно ли имя.',
+      content: ProfileEditContent
+    },
     {id: 'birthday', title: 'Дата рождения', status: 'REAL', content: BirthdayContent},
     {id: 'channel', title: 'Личный канал', status: 'REAL', content: PersonalChannelContent}
   ]
 }, {
   id: 'privacy',
   title: 'Приватность',
+  group: 'telegram',
   items: [
     privacyItem('phone', 'Номер телефона', 'inputPrivacyKeyPhoneNumber', 'Кто видит мой номер телефона'),
     privacyItem('lastSeen', 'Последний визит и онлайн', 'inputPrivacyKeyStatusTimestamp', 'Кто видит время моего последнего визита', {
@@ -126,194 +134,187 @@ const CATEGORIES: VKSettingCategory[] = [{
     }),
     privacyItem('profilePhoto', 'Фото профиля', 'inputPrivacyKeyProfilePhoto', 'Кто видит мои фотографии профиля'),
     privacyItem('birthday', 'Дата рождения', 'inputPrivacyKeyBirthday', 'Кто видит мою дату рождения'),
-    {
-      id: 'stories',
-      title: 'Истории',
-      status: 'TODO',
-      note: 'В Telegram нет общей настройки приватности историй: круг зрителей задаётся для каждой истории при публикации, а публикации в Web K нет.'
-    },
     privacyItem('gifts', 'Подарки', 'inputPrivacyKeyStarGiftsAutoSave', 'Чьи подарки показываются в моём профиле', {
-      status: 'PARTIAL',
-      note: 'Какие подарки принимать и кнопка подарка в чатах — пока в Telegram.',
-      webK: {
-        title: 'Остальные настройки подарков',
-        open: () => openWebKLeftTab('AppPrivacyGiftsTab', () => rootScope.managers.appPrivacyManager.getGlobalPrivacySettings())
-      }
+      content: () => <VKGiftsPrivacy />
     })
   ]
 }, {
-  id: 'notifications',
-  title: 'Уведомления',
-  items: [
-    {id: 'users', title: 'Сообщения', status: 'REAL', content: () => <VKSettingsNotifications scope="inputNotifyUsers" />},
-    {id: 'chats', title: 'Группы', status: 'REAL', content: () => <VKSettingsNotifications scope="inputNotifyChats" />},
-    {id: 'broadcasts', title: 'Каналы', status: 'REAL', content: () => <VKSettingsNotifications scope="inputNotifyBroadcasts" />},
-    {id: 'calls', title: 'Звонки', status: 'TODO', note: 'В Web K нет отдельной настройки уведомлений о звонках.'},
-    {
-      id: 'stories',
-      title: 'Истории',
-      status: 'PARTIAL',
-      note: 'Уведомления о новых историях настраиваются пока в Telegram.',
-      webK: {title: 'Уведомления в Telegram', open: () => openWebKLeftTab('AppNotificationsTab')}
-    }
-  ]
-}, {
-  id: 'chats',
-  title: 'Чаты',
+  id: 'data',
+  title: 'Данные и память',
+  group: 'telegram',
   items: [
     {
-      id: 'appearance',
-      title: 'Внешний вид чатов',
-      status: 'PARTIAL',
-      note: 'Тема, размер текста и прочее — пока в Telegram.',
-      webK: {title: 'Общие настройки Telegram', open: () => openWebKLeftTab('AppGeneralSettingsTab')}
-    },
-    {
-      id: 'background',
-      title: 'Фон',
-      status: 'PARTIAL',
-      note: 'Выбор фона — пока в Telegram.',
-      webK: {title: 'Фон чатов в Telegram', open: () => openWebKLeftTab('AppChatBackgroundTab')}
-    },
-    {id: 'animations', title: 'Анимации', status: 'REAL', content: () => <LiteToggle liteKey="animations" title="Анимации интерфейса" />},
-    {
-      id: 'autoplay',
-      title: 'Автовоспроизведение',
+      id: 'autoDownload',
+      title: 'Автозагрузка медиа',
       status: 'REAL',
-      content: () => (
-        <fieldset class="vk-settings-fieldset">
-          <LiteToggle liteKey="gif" title="GIF" />
-          <LiteToggle liteKey="video" title="Видео" />
-        </fieldset>
-      )
+      content: VKSettingsAutoDownload
+    },
+    {
+      id: 'storage',
+      title: 'Память',
+      status: 'PARTIAL',
+      note: 'Оценка по кэшу браузера.',
+      content: VKSettingsStorage,
+      webK: {title: 'Срок и лимит кэша', open: openVKCacheLimit}
     }
   ]
 }, {
-  id: 'media',
-  title: 'Медиа',
+  id: 'sessions',
+  title: 'Сессии',
+  group: 'telegram',
+  items: [],
+  content: SessionsContent
+}, {
+  id: 'language',
+  title: 'Язык',
+  group: 'telegram',
+  items: [],
+  content: VKSettingsLanguage
+}, {
+  id: 'navbar',
+  title: 'Навбар',
+  group: 'vkgram',
+  items: [],
+  content: VKSettingsMobileNav
+}, {
+  id: 'app',
+  title: 'Приложение',
+  group: 'vkgram',
   items: [
     {
-      id: 'autodownload',
-      title: 'Автозагрузка',
-      status: 'PARTIAL',
-      note: 'Правила автозагрузки — пока в Telegram.',
-      webK: {title: 'Данные и память в Telegram', open: () => openWebKLeftTab('AppDataAndStorageTab')}
-    },
-    {id: 'video', title: 'Видео', status: 'REAL', content: () => <LiteToggle liteKey="video" title="Автовоспроизведение видео" />},
-    {id: 'gif', title: 'GIF', status: 'REAL', content: () => <LiteToggle liteKey="gif" title="Автовоспроизведение GIF" />},
-    {id: 'music', title: 'Музыка', status: 'TODO', note: 'Отдельных настроек музыки в Web K нет.'}
-  ]
-}, {
-  id: 'account',
-  title: 'Аккаунт',
-  items: [
-    {id: 'sessions', title: 'Сессии', status: 'REAL', content: VKSettingsSessions},
-    {id: 'devices', title: 'Устройства', status: 'REAL', note: 'В Telegram устройство — это активный сеанс, поэтому здесь тот же список.', content: VKSettingsSessions},
-    {id: 'language', title: 'Язык', status: 'REAL', content: VKSettingsLanguage},
-    {id: 'logout', title: 'Выход', status: 'REAL', content: () => (
-      <div class="vk-profile-actions">
-        <button type="button" class="vk-button" onClick={logOut}>Выйти из аккаунта</button>
-      </div>
-    )}
+      id: 'config',
+      title: 'Экспорт и импорт настроек',
+      status: 'REAL',
+      note: 'Настройки ленты новостей и списка диалогов — одним файлом.',
+      content: VKSettingsConfig
+    }
   ]
 }];
 
-function StatusBadge(props: {status: VKSettingStatus}) {
-  return <span class={`vk-settings-status is-${props.status.toLowerCase()}`}>{STATUS_TITLES[props.status]}</span>;
-}
+const toTabs = (categories: VKSettingCategory[]): VKTabItem<string>[] =>
+  categories.map((category) => ({id: category.id, title: category.title}));
+
+// the phone strip keeps all the categories in one line; the desktop rail splits
+// them into two blocks — Telegram's settings first, VKgram's own under them
+const SETTINGS_TABS = toTabs(CATEGORIES);
+const TELEGRAM_TABS = toTabs(CATEGORIES.filter((category) => category.group === 'telegram'));
+const VKGRAM_TABS = toTabs(CATEGORIES.filter((category) => category.group === 'vkgram'));
 
 /**
- * «Настройки»: VKgram's own structure over Web K's settings. Navigation is
- * local (category → item) and stays in this content area.
+ * «Настройки»: VKgram's own structure over Web K's settings. The categories
+ * are the tabs of one section (the route's category, or the first one until a
+ * choice is made): a right rail of two tab blocks on desktop — Telegram's
+ * settings over VKgram's own, the layout of «Новости» / «Друзья» — and one
+ * strip above the content on a phone. The panel shows ALL of the active
+ * category's items at once — every item is its headed piece, nothing hides
+ * behind a row click.
  */
 export default function VKPageSettings() {
-  const category = createMemo(() => CATEGORIES.find((category) => category.id === vkSettingsRoute().category));
-  const item = createMemo(() => category()?.items.find((item) => item.id === vkSettingsRoute().item));
-
-  const Breadcrumbs = (): JSX.Element => (
-    <nav class="vk-settings-breadcrumbs" aria-label="Путь">
-      <button type="button" class="vk-link-button" onClick={() => setVKSettingsRoute({})}>Настройки</button>
-      <Show when={category()}>
-        {' › '}
-        <button type="button" class="vk-link-button" onClick={() => setVKSettingsRoute({category: category().id})}>
-          {category().title}
-        </button>
-      </Show>
-    </nav>
+  // The desktop rail and the mobile strip are separate layouts, only one is
+  // mounted at a time (the same split as «Новости»).
+  const [isDesktop, setIsDesktop] = createSignal(
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 601px)').matches
   );
+  onMount(() => {
+    const media = window.matchMedia('(min-width: 601px)');
+    const update = () => setIsDesktop(media.matches);
+    update();
+    media.addEventListener?.('change', update);
+    onCleanup(() => media.removeEventListener?.('change', update));
+  });
+
+  const activeCategory = () => CATEGORIES.find((category) => category.id === vkSettingsRoute().category) ?? CATEGORIES[0];
+  const onTab = (id: string) => setVKSettingsRoute({category: id});
 
   return (
     <div class="vk-page vk-settings">
-      <Show when={category()} fallback={
-        <section class="vk-block vk-page-block" aria-labelledby="vk-settings-title">
-          <h1 id="vk-settings-title" class="vk-block-title">Настройки</h1>
-          <ul class="vk-settings-list">
-            <For each={CATEGORIES}>
-              {(category) => (
-                <li>
-                  <button type="button" class="vk-settings-row" onClick={() => setVKSettingsRoute({category: category.id})}>
-                    {category.title}
-                  </button>
-                </li>
-              )}
-            </For>
-          </ul>
-        </section>
-      }>
-        <Show when={item()} fallback={
-          <section class="vk-block vk-page-block" aria-labelledby="vk-settings-category-title">
-            <Breadcrumbs />
-            <h1 id="vk-settings-category-title" class="vk-block-title">{category().title}</h1>
-            <ul class="vk-settings-list">
-              <For each={category().items}>
-                {(item) => (
-                  <li>
-                    <button
-                      type="button"
-                      class="vk-settings-row"
-                      onClick={() => setVKSettingsRoute({category: category().id, item: item.id})}
-                    >
-                      {item.title}
-                      <StatusBadge status={item.status} />
-                    </button>
-                  </li>
-                )}
-              </For>
-            </ul>
+      <div class="vk-settings-layout">
+        <div class="vk-settings-main">
+          <section class="vk-block vk-page-block" aria-labelledby="vk-settings-title">
+            {/* no visible heading: the page is named by the menu; kept for screen readers */}
+            <h1 id="vk-settings-title" class="vk-page-title vk-visually-hidden">Настройки</h1>
+            <Show when={!isDesktop()}>
+              {/* the mobile strip: the tabs above the content, the rail does not fit */}
+              <div class="vk-settings-mobile-tabs">
+                <VKTabs
+                  tabs={SETTINGS_TABS}
+                  active={activeCategory().id}
+                  onChange={onTab}
+                  idPrefix="vk-settings-mobile"
+                  label="Разделы настроек"
+                />
+              </div>
+            </Show>
+            <div
+              id={`vk-settings-panel-${activeCategory().id}`}
+              role="tabpanel"
+              aria-labelledby={`vk-settings-mobile-tab-${activeCategory().id} vk-settings-desktop-tab-${activeCategory().id}`}
+            >
+              <Show
+                when={activeCategory().content}
+                fallback={
+                  <For each={activeCategory().items}>
+                    {(item) => (
+                      <section class="vk-settings-item" aria-labelledby={`vk-settings-item-${item.id}`}>
+                        <h2 id={`vk-settings-item-${item.id}`} class="vk-block-title">{item.title}</h2>
+                        <Show when={item.note}>
+                          <p class="vk-page-text vk-page-text-secondary">{item.note}</p>
+                        </Show>
+                        <Show when={item.content}>
+                          {(() => {
+                            const Content = item.content;
+                            return <Content />;
+                          })()}
+                        </Show>
+                        <Show when={item.status === 'TODO' && !item.content}>
+                          <p class="vk-page-text vk-page-text-secondary">Скоро.</p>
+                        </Show>
+                        <Show when={item.webK}>
+                          <div class="vk-profile-actions">
+                            <button type="button" class="vk-button vk-button-secondary" onClick={() => item.webK.open()}>
+                              {item.webK.title} →
+                            </button>
+                          </div>
+                        </Show>
+                      </section>
+                    )}
+                  </For>
+                }
+              >
+                {(() => {
+                  const Content = activeCategory().content;
+                  return <Content />;
+                })()}
+              </Show>
+            </div>
           </section>
-        }>
-          {/* keyed: another item gets fresh state */}
-          <Show when={item()} keyed>
-            {(item) => (
-              <section class="vk-block vk-page-block" aria-labelledby="vk-settings-item-title">
-                <Breadcrumbs />
-                <h1 id="vk-settings-item-title" class="vk-block-title">
-                  {item.title} <StatusBadge status={item.status} />
-                </h1>
-                <Show when={item.note}>
-                  <p class="vk-page-text vk-page-text-secondary">{item.note}</p>
-                </Show>
-                <Show when={item.content}>
-                  {(() => {
-                    const Content = item.content;
-                    return <Content />;
-                  })()}
-                </Show>
-                <Show when={item.status === 'TODO' && !item.content}>
-                  <p class="vk-page-text vk-page-text-secondary">Скоро.</p>
-                </Show>
-                <Show when={item.webK}>
-                  <div class="vk-profile-actions">
-                    <button type="button" class="vk-button vk-button-secondary" onClick={() => item.webK.open()}>
-                      {item.webK.title} →
-                    </button>
-                  </div>
-                </Show>
-              </section>
-            )}
-          </Show>
+        </div>
+
+        <Show when={isDesktop()}>
+          <aside class="vk-settings-side" aria-label="Разделы настроек">
+            <section class="vk-block vk-settings-side-block" aria-labelledby="vk-settings-side-telegram-title">
+              <h2 id="vk-settings-side-telegram-title" class="vk-block-title">Телеграм</h2>
+              <VKTabs
+                tabs={TELEGRAM_TABS}
+                active={activeCategory().id}
+                onChange={onTab}
+                idPrefix="vk-settings-desktop"
+                label="Настройки Телеграма"
+              />
+            </section>
+            <section class="vk-block vk-settings-side-block" aria-labelledby="vk-settings-side-vkgram-title">
+              <h2 id="vk-settings-side-vkgram-title" class="vk-block-title">VKgram</h2>
+              <VKTabs
+                tabs={VKGRAM_TABS}
+                active={activeCategory().id}
+                onChange={onTab}
+                idPrefix="vk-settings-desktop"
+                label="Настройки VKgram"
+              />
+            </section>
+          </aside>
         </Show>
-      </Show>
+      </div>
     </div>
   );
 }

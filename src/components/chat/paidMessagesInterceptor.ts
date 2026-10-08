@@ -48,7 +48,15 @@ export const PAYMENT_REJECTED = Symbol('Payment rejected');
 export default class PaidMessagesInterceptor {
   private pendingUndoableMessage = createPendingUndoableMessage();
 
-  private static rawStars = useStars();
+  // * `useStars()` fires an authorized RPC, so a static initializer here would
+  // * call it at import time — including on the sign-in screen, where the key
+  // * is not registered yet: the 401 logged the (non-existent) session out and
+  // * reloaded the page in a loop. Fetch on first use instead.
+  private static _rawStars: ReturnType<typeof useStars>;
+
+  static get rawStars() {
+    return this._rawStars ??= useStars();
+  }
 
   /**
    * Mininum required params to make the message(s) undoable

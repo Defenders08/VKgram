@@ -1,13 +1,14 @@
 import {createMemo, createSignal, For, JSX, onCleanup, onMount, Show} from 'solid-js';
 import type {Chat, User} from '@layer';
-import rootScope from '@lib/rootScope';
 import {usePeers} from '@stores/peers';
 import {AvatarNewTsx} from '@components/avatarNew';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
-import {openVKChannel} from '@/vkgram/pages/channel/route';
-import {openWebKChat, openWebKProfile} from '@/vkgram/webk';
+import {openVKChannelPage} from '@/vkgram/pages/channel/openChannel';
+import {openVKChat} from '@/vkgram/pages/messages/openChat';
+import {openVKProfile} from '@/vkgram/pages/profile/openProfile';
 import useSubscribedChannels, {useSubscribedGroups} from '@/vkgram/hooks/useSubscribedChannels';
 import useContactPeerIds from '@/vkgram/hooks/useContactPeerIds';
+import useConnectionStatus from '@/vkgram/hooks/useConnectionStatus';
 import matchesQuery from '@/vkgram/utils/matchesQuery';
 import VKIcon from '@/vkgram/components/VKIcons';
 
@@ -38,22 +39,33 @@ const KIND_SUBS: {[kind in VKSearchResultKind]: string} = {
 };
 
 function pickResult(result: VKSearchResult) {
-  if(result.kind === 'channel') openVKChannel(result.peerId);
-  else if(result.kind === 'group') openWebKChat(result.peerId);
-  else openWebKProfile(result.peerId);
+  if(result.kind === 'channel') openVKChannelPage(result.peerId);
+  else if(result.kind === 'group') openVKChat(result.peerId);
+  else openVKProfile(result.peerId);
 }
+
+const PLACEHOLDER = 'Поиск людей и сообществ';
+const HINT = 'Друзья, каналы и группы. Диалоги ищите в «Сообщениях».';
 
 /**
  * The header search of the old VK: one field over everything the user already
- * has — contacts, subscribed channels, groups. Local filtering only (the same
- * data the section pages list), a dropdown under the field, arrow keys +
- * Enter to pick. Nothing is sent to the server.
+ * has — contacts, subscribed channels, groups — to GO to a profile, a channel
+ * or a group chat from any section. Local filtering only (the same data the
+ * section pages list), a dropdown under the field, arrow keys + Enter to pick.
+ * Nothing is sent to the server. It is not the search of the dialogs: that one
+ * filters the list of «Сообщения» (names of the dialogs, the open folder).
+ *
+ * While the connection is down the field itself reports it, as Web K's search
+ * does: the spinner takes the icon's place, the status («Waiting for network…»)
+ * the placeholder's; a visually hidden copy announces the change to AT.
  */
 export default function VKHeaderSearch() {
   const peers = usePeers();
   const contactIds = useContactPeerIds();
   const {channels, isReady: areChannelsReady} = useSubscribedChannels();
   const {groups} = useSubscribedGroups();
+  // «Waiting for network…» and the like; `undefined` when all is well
+  const connectionStatus = useConnectionStatus();
 
   const [query, setQuery] = createSignal('');
   const [isActive, setActive] = createSignal(false);
@@ -204,13 +216,21 @@ export default function VKHeaderSearch() {
 
   return (
     <div class="vk-header-search" ref={wrapperEl}>
-      <VKIcon name="search" size={15} class="vk-header-search-icon" />
+      <Show when={connectionStatus()} fallback={<VKIcon name="search" size={15} class="vk-header-search-icon" />}>
+        {(status) => (
+          <>
+            <span class="vk-header-search-spinner" aria-hidden="true" />
+            <span class="vk-visually-hidden" role="status">{status()}</span>
+          </>
+        )}
+      </Show>
       <input
         type="search"
         class="vk-header-search-input"
         value={query()}
-        placeholder="Поиск"
-        aria-label="Поиск"
+        placeholder={connectionStatus() ?? PLACEHOLDER}
+        title={HINT}
+        aria-label={PLACEHOLDER}
         role="combobox"
         aria-expanded={isDropdownShown()}
         aria-controls={LIST_ID}
@@ -228,7 +248,7 @@ export default function VKHeaderSearch() {
             fallback={
               <li class="vk-header-search-empty" role="presentation">
                 {areChannelsReady() || contactIds() ?
-                  'Ничего не найдено.' :
+                  'Среди друзей, каналов и групп ничего не найдено.' :
                   'Поиск ещё загружается…'}
               </li>
             }

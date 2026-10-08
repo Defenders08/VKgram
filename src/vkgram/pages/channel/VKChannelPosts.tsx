@@ -27,16 +27,19 @@ function groupPosts(messages: Message.message[]) {
 }
 
 /**
- * «Публикации» — the pinned post (Web K's pinned message of the channel) and
+ * «Записи» tab of «Лента» — the pinned post (Web K's pinned message of the channel) and
  * the feed: the latest posts first, older ones as the end of the list comes
  * near (an IntersectionObserver on a sentinel — no scroll listeners).
  */
 export default function VKChannelPosts(props: {
   peerId: PeerId,
-  pinnedMessageId?: number
+  pinnedMessageId?: number,
+  // reports the total to the tab label of «Лента»
+  onCount?: (count: number | undefined) => void
 }) {
   const history = createChannelHistory({peerId: () => props.peerId});
-  const grouped = createMemo(() => groupPosts(history.messages()));
+  createEffect(() => props.onCount?.(history.count()));
+  const grouped = createMemo(() => groupPosts(history.messages().filter(m => m._ === 'message') as Message.message[]));
   // The list is keyed by the ids only, so a page of older posts (or a new view
   // count) doesn't re-create the posts already on screen along with their media.
   const postIds = createMemo(() => grouped().map((post) => post.id), [], {
@@ -72,20 +75,13 @@ export default function VKChannelPosts(props: {
   });
 
   return (
-    <section class="vk-block vk-channel-posts" aria-labelledby="vk-channel-posts-title">
+    <div class="vk-channel-posts">
       <Show when={pinned.latest}>
         <div class="vk-channel-pinned">
-          <h2 class="vk-block-title">Закреплённая публикация</h2>
+          <h3 class="vk-channel-subtitle">Закреплённая публикация</h3>
           <VKChannelPost messages={[pinned.latest]} isPinned />
         </div>
       </Show>
-
-      <h2 id="vk-channel-posts-title" class="vk-block-title">
-        Публикации
-        <Show when={history.count()}>
-          <span class="vk-page-text-secondary vk-list-count"> {history.count()}</span>
-        </Show>
-      </h2>
 
       <Show when={history.status() === 'loading'}>
         <p class="vk-page-text vk-page-text-secondary">Загрузка публикаций…</p>
@@ -116,6 +112,6 @@ export default function VKChannelPosts(props: {
           </Show>
         </Show>
       </Show>
-    </section>
+    </div>
   );
 }

@@ -1,14 +1,22 @@
 import {createUniqueId, For, Show} from 'solid-js';
 import {createVKPrivacy, PrivacyType, VK_PRIVACY_TYPE_TITLES, VKPrivacyKey} from '@/vkgram/privacy';
+import {Choice} from '@/vkgram/pages/news/VKNewsSettings';
 
 const TYPES = [PrivacyType.Everybody, PrivacyType.Contacts, PrivacyType.Nobody];
 
 /**
  * «Кто может видеть …» for one Telegram privacy key — appPrivacyManager
- * underneath, the user's exceptions are kept (see createVKPrivacy).
+ * underneath, the user's exceptions are kept (see createVKPrivacy). The
+ * options are the same `Choice` radios as in the feed settings. A host that
+ * already reads the same key (the birthday row) hands over its `privacy`, so
+ * it shows the change at once and the key is not loaded twice.
  */
-export default function VKSettingsPrivacy(props: {privacyKey: VKPrivacyKey, question: string}) {
-  const privacy = createVKPrivacy(props.privacyKey);
+export default function VKSettingsPrivacy(props: {
+  privacyKey: VKPrivacyKey,
+  question: string,
+  privacy?: ReturnType<typeof createVKPrivacy>
+}) {
+  const privacy = props.privacy ?? createVKPrivacy(props.privacyKey);
   const name = createUniqueId();
 
   return (
@@ -21,15 +29,14 @@ export default function VKSettingsPrivacy(props: {privacyKey: VKPrivacyKey, ques
             <legend class="vk-settings-legend">{props.question}</legend>
             <For each={TYPES}>
               {(type) => (
-                <label class="vk-settings-radio">
-                  <input
-                    type="radio"
-                    name={name}
-                    checked={privacy.type() === type}
-                    onChange={(e) => e.currentTarget.checked && privacy.setType(type)}
-                  />
+                <Choice
+                  type="radio"
+                  name={name}
+                  checked={privacy.type() === type}
+                  onChange={(checked) => checked && privacy.setType(type)}
+                >
                   {VK_PRIVACY_TYPE_TITLES[type]}
-                </label>
+                </Choice>
               )}
             </For>
           </fieldset>

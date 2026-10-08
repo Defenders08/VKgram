@@ -47,10 +47,10 @@ export function mountAuthFlow(authState: MountAuthFlowState): () => void {
     dispose();
     root.remove();
     activeDispose = null;
-    if(import.meta.hot) (import.meta.hot.data as any).activeDispose = null;
+    if(import.meta.hot?.data) (import.meta.hot.data as any).activeDispose = null;
   };
 
-  if(import.meta.hot) (import.meta.hot.data as any).activeDispose = activeDispose;
+  if(import.meta.hot?.data) (import.meta.hot.data as any).activeDispose = activeDispose;
 
   return activeDispose;
 }
@@ -60,14 +60,34 @@ export function mountAuthFlow(authState: MountAuthFlowState): () => void {
  * `bootstrapIm` once the IM page has taken over.
  */
 export function disposeActiveAuthFlow(): void {
-  activeDispose?.();
+  // drop the slot BEFORE calling: the stored teardown may be one that does not
+  // self-clear (the VKgram login page's), and a second call must be a no-op
+  const dispose = activeDispose;
+  activeDispose = null;
+  if(import.meta.hot?.data) (import.meta.hot.data as any).activeDispose = null;
+  dispose?.();
+}
+
+/**
+ * Put another teardown into the same slot `mountAuthFlow` uses. The VKgram
+ * login page (see `@/vkgram/pages/VKLoginHost`) hosts the same
+ * `<AuthCardsHost>` in its own chrome — `bootstrapIm` must tear down whichever
+ * of the two is on screen, so both funnel here.
+ */
+export function registerActiveDispose(dispose: () => void): void {
+  activeDispose = dispose;
+  if(import.meta.hot?.data) (import.meta.hot.data as any).activeDispose = activeDispose;
 }
 
 /* ------------------------------------------------------------------ */
 /* Mapping helpers                                                    */
 /* ------------------------------------------------------------------ */
 
-function authStateToCardSpec(authState: MountAuthFlowState): CardSpec {
+/**
+ * Maps a persisted `AuthState` to the card the flow opens with. Shared with
+ * the VKgram login host, which opens the same flow inside its own page.
+ */
+export function authStateToCardSpec(authState: MountAuthFlowState): CardSpec {
   switch(authState._) {
     case 'authStateSignIn':
       return {name: 'signIn'};

@@ -73,7 +73,11 @@ export type FormatterArgument = string | number | Node | FormatterArgument[];
 export type FormatterArguments = FormatterArgument[];
 
 export const UNSUPPORTED_LANG_PACK_KEY: LangPackKey = IS_MOBILE ? 'Message.Unsupported.Mobile' : 'Message.Unsupported.Desktop';
-const TEST_LOCAL = IS_BETA && true;
+// * VKgram: the local pack is English while the interface defaults to Russian, so this
+// * upstream dev toggle (try out src/lang.ts without the server) must stay off —
+// * with it on, dev builds append the local English strings after the server's
+// * ones and pin the whole Telegram UI to English no matter what was applied
+const TEST_LOCAL = IS_BETA && false;
 
 namespace I18n {
   export const strings: Map<LangPackKey, LangPackString> = new Map();

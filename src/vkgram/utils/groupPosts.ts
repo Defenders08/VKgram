@@ -12,7 +12,9 @@ export default function groupPosts(messages: Message.message[]): VKPost[] {
   const posts: VKPost[] = [];
   for(const message of messages) {
     const last = posts[posts.length - 1];
-    if(last && message.grouped_id && last.messages[0].grouped_id === message.grouped_id) {
+    // (a merged feed: the same album id in another channel is another post)
+    if(last && message.grouped_id && last.messages[0].grouped_id === message.grouped_id &&
+      last.messages[0].peerId === message.peerId) {
       last.messages.push(message);
     } else {
       posts.push({id: message.mid, messages: [message]});

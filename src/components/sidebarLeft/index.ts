@@ -1784,11 +1784,14 @@ export class AppSidebarLeft extends SidebarSlider {
 
       localStorage.setItem('should-animate-auth', 'true');
 
+      // the shell may be gone (another UI can sit over it): the animation is its own, the switch is not
       const chatsPageEl = document.querySelector('.page-chats');
-      chatsPageEl.classList.add('main-screen-exit');
-      await doubleRaf();
-      chatsPageEl.classList.add('main-screen-exiting');
-      await pause(200);
+      if(chatsPageEl) {
+        chatsPageEl.classList.add('main-screen-exit');
+        await doubleRaf();
+        chatsPageEl.classList.add('main-screen-exiting');
+        await pause(200);
+      }
     }
 
     changeAccount((totalAccounts + 1) as ActiveAccountNumber, newTab);

@@ -27,6 +27,7 @@
 
 import {IS_APPLE_MOBILE, IS_SAFARI} from '@environment/userAgent';
 import acquireStream, {StreamAcquisition} from '@lib/calls/helpers/acquireStream';
+import stopTrack from '@lib/calls/helpers/stopTrack';
 
 export interface NativeVideoRecorderConfig {
   // Square output dimensions written to the encoded file. 400 = the larger of
@@ -145,6 +146,11 @@ export default class NativeVideoRecorder {
   // can't be cancelled, so without this the camera LED would stay on forever.
   // See acquireStream.
   private acquisition: StreamAcquisition | undefined;
+  // Every camera+mic stream acquired for THIS recording. switchCamera() stops
+  // only the replaced camera's video track (its mic track is baked into the
+  // recorded stream and must stay live until the recording ends), so the
+  // remaining tracks are stopped in bulk here on release.
+  private rawStreams: MediaStream[] = [];
 
   static isSupported = isNativeVideoRecorderSupported;
 
@@ -211,6 +217,7 @@ export default class NativeVideoRecorder {
     // camera doesn't go live with no owner.
     if(!stream) return;
     this.stream = stream;
+    this.rawStreams = [stream];
 
     // Off-DOM <video> that decodes the raw camera feed for the canvas.
     this.drawVideo = document.createElement('video');
@@ -429,6 +436,57 @@ export default class NativeVideoRecorder {
     this.onresume();
   }
 
+  // Switch to another camera mid-recording without stopping it. The MediaRecorder
+  // records the CANVAS stream, so swapping the crop source is seamless: acquire
+  // the new feed video-only (the first stream's mic track is baked into the
+  // recorded stream and must stay live), point the crop <video> at it — the rAF
+  // loop keeps drawing — then stop the replaced camera's video track. Throws
+  // without touching the recording when the other camera can't be acquired.
+  public async switchCamera(target: {videoDeviceId?: string, facingMode?: 'user' | 'environment'} = {}): Promise<void> {
+    if(this.state === 'inactive' || !this.stream) return;
+
+    const video: MediaTrackConstraints = {
+      width: {ideal: 720},
+      height: {ideal: 720},
+      frameRate: {ideal: this.config.frameRate}
+    };
+    if(target.videoDeviceId) {
+      video.deviceId = {exact: target.videoDeviceId};
+    } else {
+      video.facingMode = target.facingMode ?? (this.config.facingMode === 'user' ? 'environment' : 'user');
+    }
+
+    // Publish the handle before awaiting, so a cancel during the acquire
+    // disposes THIS acquisition (the previous one is covered by rawStreams).
+    const acquisition = this.acquisition = acquireStream({video, audio: false});
+    const acquired = await acquisition.promise;
+    // released (cancel) while the new camera was warming up
+    if(!acquired) return;
+    if(!acquired.getVideoTracks().length) {
+      acquisition.dispose();
+      throw new Error('switchCamera: acquired stream has no video track');
+    }
+
+    // a cancel may have landed between the acquire resolving and here —
+    // releaseStream() clears `stream` before anything else of ours
+    if(!this.stream) {
+      acquired.getTracks().forEach((track) => stopTrack(track));
+      return;
+    }
+
+    const oldStream = this.stream;
+    this.rawStreams.push(acquired);
+    this.stream = acquired;
+    if(this.drawVideo) {
+      this.drawVideo.srcObject = acquired;
+      await this.drawVideo.play().catch(() => {});
+    }
+
+    // stop only the replaced camera: its audio track is what MediaRecorder
+    // records and must keep running until the recording ends
+    oldStream.getVideoTracks().forEach((track) => stopTrack(track));
+  }
+
   // A playable Blob of everything captured so far — for the paused preview.
   // Sourced from the streamable (webm) chunks; mp4's own chunks aren't
   // mid-stream playable. Undefined when no streamable source exists (e.g.
@@ -472,6 +530,10 @@ export default class NativeVideoRecorder {
     // (see start()), which dispose() stops the instant it resolves.
     this.acquisition?.dispose();
     this.acquisition = undefined;
+    // switchCamera() kept the first stream (its mic track) alive for the
+    // recording — stop whatever survived, e.g. the mic after a camera switch.
+    this.rawStreams.forEach((stream) => stream.getTracks().forEach(stopTrack));
+    this.rawStreams = [];
 
     if(this.previewRecorder) {
       try {

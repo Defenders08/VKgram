@@ -502,7 +502,8 @@ export class ThemeController {
 
   public getTheme(name: AppTheme['name'] = this.getResolvedThemeName()) {
     const [appSettings] = useAppSettings();
-    return appSettings.themes.find((t) => t.name === name) ??
+    // appSettings is still empty early in the boot (the login page): fall through to SETTINGS_INIT
+    return appSettings.themes?.find((t) => t.name === name) ??
       SETTINGS_INIT.themes.find((t) => t.name === name);
   }
 

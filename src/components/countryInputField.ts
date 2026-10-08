@@ -91,7 +91,7 @@ export default class CountryInputField extends InputField {
     this.container.classList.add('input-select');
 
     const selectWrapper = this.selectWrapper = document.createElement('div');
-    selectWrapper.classList.add('select-wrapper', 'z-depth-3', 'hide');
+    selectWrapper.classList.add('select-wrapper', 'hide');
 
     const arrowDown = document.createElement('span');
     arrowDown.classList.add('arrow', 'arrow-down');

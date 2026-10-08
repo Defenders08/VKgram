@@ -1,0 +1,663 @@
+// * VKgram: the skin of the full-screen viewers — stories and media (photo / video / gif / avatar).
+// *
+// * Both viewers are Web K's own (the stories viewer, `AppMediaViewer`): they keep all of their logic —
+// * progress, holds, reactions, replies, zoom, swipes, the opening / closing flight of the picture, the
+// * video controls. Only the look is VKgram's: the old-VK photo layer — a flat near-black field, quiet white
+// * icons with a square hover, the light VK link blue, VK blue for progress, Tahoma, 2px corners — and it
+// * applies only while `html.is-vkgram` is on, so `?vkgram=0` shows the original viewers.
+// *
+// * This file is the ONLY place the viewers are skinned (the older copy in vk-base.scss is gone).
+// *
+// * LAYERING. Both viewers are mounted outside `.vkgram` (the media viewer in <body>, the stories into
+// * `#stories-viewer`) with Web K's own z-index 4, i.e. UNDER the sticky VK header (20): the top of a
+// * story — progress, author, ⋮, ✕ — hid behind the header. Both are lifted to 1100: above the header,
+// * the modals (960) and the menus (1000). The palette of `.vkgram` is not inherited the way the page
+// * tokens are used here, so the viewer has its own `--vkv-*` tokens (it is dark in any theme).
+// *
+// * HOOKS. The stories viewer is made of CSS modules; the generated class keeps its local name
+// * (`_ViewerStoryHeader_x1y2z`), so parts are reached by `[class*="ViewerStoryHeader"]`. The story card
+// * itself is `[class*="ViewerStory_"]` (name + the `_hash` suffix), because `ViewerStory…` alone is the
+// * prefix of every part. The names are listed in `components/stories/viewer.module.d.scss.ts`.
+
+html.is-vkgram {
+  --vkv-backdrop: rgba(0, 0, 0, .96); // near-opaque: at .85 the page behind (tiles, text) showed through
+  --vkv-scrim: rgba(0, 0, 0, .6);
+  --vkv-panel: rgba(25, 25, 26, .9);
+  --vkv-line: rgba(255, 255, 255, .12);
+  --vkv-blue: #5181b8;
+  --vkv-blue-hover: #6a94c8;
+  --vkv-link: #8fb4e0;
+  --vkv-text: #ffffff;
+  --vkv-text-dim: rgba(255, 255, 255, .72);
+  --vkv-text-faint: rgba(255, 255, 255, .5);
+  --vkv-hover: rgba(255, 255, 255, .14);
+  --vkv-hover-strong: rgba(255, 255, 255, .24);
+  --vkv-danger: #e64646;
+  --vkv-radius: 2px;
+  --vkv-card-radius: 4px;
+  --vkv-font: tahoma, verdana, arial, sans-serif;
+  --vkv-z: 1100;
+}
+
+// ———————————————————————————————————————————————— shared
+
+// a flat square button on a dark surface: ✕ / ⋮ / share / the arrows of the viewers
+@mixin vkv-flat-button {
+  border-radius: var(--vkv-radius);
+  color: var(--vkv-text-dim);
+  transition: background-color .12s ease, color .12s ease, opacity .12s ease;
+
+  &:hover {
+    background-color: var(--vkv-hover);
+    color: var(--vkv-text);
+  }
+
+  &:active {
+    background-color: var(--vkv-hover-strong);
+  }
+
+  &:focus-visible {
+    outline: 1px solid rgba(255, 255, 255, .75);
+    outline-offset: -1px;
+  }
+}
+
+// ———————————————————————————————————————————————— stories viewer
+
+html.is-vkgram {
+  // above the VK header (see LAYERING)
+  [role="dialog"][aria-modal="true"]:has(> [class*="ViewerBackground"]) {
+    z-index: var(--vkv-z);
+    font-family: var(--vkv-font);
+  }
+
+  // the dimmed page behind the stories: flat; on a phone (the full-screen mode) plain black
+  [class*="ViewerBackground"] {
+    background-color: var(--vkv-backdrop) !important;
+  }
+
+  [class*="isFull"] > [class*="ViewerBackground"] {
+    background-color: #000 !important;
+  }
+
+  // — the story card: a flat VK corner (divided by the scale, so a small neighbour keeps a readable
+  //   corner) and a thin light frame, so the card does not melt into the dimmed page
+  [class*="ViewerStory_"] {
+    border-radius: calc(var(--vkv-card-radius) * (1 / var(--scale, 1))) !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .08), 0 8px 32px rgba(0, 0, 0, .5);
+  }
+
+  // — the strip of segments on top: thin, flat, square, white
+  [class*="ViewerStorySlides"]:not([class*="ViewerStorySlidesSlide"]) {
+    top: 8px;
+    height: 3px;
+    padding: 0 8px 0 5px;
+  }
+
+  [class*="ViewerStorySlidesSlide"] {
+    height: 3px;
+    border-radius: 0;
+    background-color: rgba(255, 255, 255, .32);
+    margin-inline-start: 3px;
+    box-shadow: none;
+
+    &:before {
+      border-radius: 0;
+      background-color: #fff;
+    }
+  }
+
+  // — the header: avatar, name, time, ▮▮ / sound / ⋮
+  [class*="ViewerStoryHeader_"] {
+    top: 18px;
+    padding: 0 6px;
+    font-family: var(--vkv-font);
+  }
+
+  [class*="ViewerStoryHeaderName"] {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  [class*="ViewerStoryHeaderTime"] {
+    margin-top: -2px;
+    height: 17px;
+    font-size: 11px;
+    line-height: 17px;
+    color: var(--vkv-text-dim);
+  }
+
+  [class*="ViewerStoryHeaderSecondary"] {
+    font-size: 11px;
+    opacity: 1;
+    color: var(--vkv-text-faint);
+  }
+
+  [class*="ViewerStoryHeaderAvatar"] {
+    width: 32px;
+    height: 32px;
+    margin-inline-end: 10px;
+  }
+
+  [class*="ViewerStoryHeaderLeft"] {
+    border-radius: var(--vkv-radius);
+    transition: background-color .12s ease;
+
+    &:hover {
+      background-color: var(--vkv-hover);
+    }
+  }
+
+  // the icons on the right (play / pause, sound, ⋮)
+  [class*="ViewerStoryHeaderRight"] .btn-icon {
+    @include vkv-flat-button;
+  }
+
+  // the top and the bottom shade of the card: calmer than the original
+  [class*="ViewerStoryShadow"] {
+    background: linear-gradient(180deg, rgba(0, 0, 0, .45) 0%, rgba(0, 0, 0, 0) 16%);
+
+    &[class*="hasCaption"] {
+      background: linear-gradient(180deg, rgba(0, 0, 0, .45) 0%, rgba(0, 0, 0, 0) 16%, rgba(0, 0, 0, 0) 78%, rgba(0, 0, 0, .65) 100%);
+    }
+  }
+
+  // — the caption of a story
+  [class*="ViewerStoryCaption_"] {
+    font-family: var(--vkv-font);
+    font-size: 13px;
+    line-height: 1.45;
+
+    a {
+      color: var(--vkv-link) !important;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  // — the footer: views, share, like
+  [class*="ViewerStoryFooter_"] {
+    height: 44px;
+    padding: 0 6px;
+    font-family: var(--vkv-font);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--vkv-text-dim);
+
+    &:hover {
+      color: var(--vkv-text);
+    }
+
+    .btn-icon {
+      @include vkv-flat-button;
+    }
+  }
+
+  [class*="ViewerStoryFooterReaction"] {
+    height: 32px;
+    padding: 4px 8px;
+    border-radius: var(--vkv-radius);
+
+    &:hover {
+      background-color: var(--vkv-hover) !important;
+    }
+
+    &[class*="isReacted"] [class*="ViewerStoryFooterIconIcon"] {
+      color: var(--vkv-danger);
+    }
+  }
+
+  [class*="ViewerStoryFooterIconIcon"] {
+    font-size: 20px;
+    margin-inline-end: 5px;
+  }
+
+  // — the reply field of someone else's story: flat, no Telegram bubble tail
+  .stories-input {
+    --chat-input-background: rgba(255, 255, 255, .12);
+    --chat-input-border-radius: var(--vkv-radius);
+    font-family: var(--vkv-font);
+
+    .input-message-container,
+    .btn-send-container,
+    .rows-wrapper,
+    .rows-wrapper:before {
+      border-radius: var(--vkv-radius) !important;
+    }
+
+    .bubble-tail {
+      display: none;
+    }
+  }
+
+  // — ✕ in the corner of the screen
+  [class*="ViewerClose"] {
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    @include vkv-flat-button;
+  }
+
+  // — the neighbours: the previous / the next peer, shrunk at the sides of the current story
+  [class*="ViewerStoryContainer"][class*="small"] {
+    [class*="ViewerStoryContentMediaContainer"] {
+      opacity: .45;
+      transition: opacity .16s ease !important;
+    }
+
+    &:hover [class*="ViewerStoryContentMediaContainer"] {
+      opacity: .75;
+    }
+
+    // the name under the avatar of a neighbour (drawn at 3rem and shrunk by the scale)
+    [class*="ViewerStoryInfoName"] {
+      font-family: var(--vkv-font);
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+  }
+
+  // the repost / privacy badges
+  [class*="ViewerStoryPrivacy"] {
+    border-radius: var(--vkv-radius);
+  }
+
+  [class*="ViewerStoryReactions"] {
+    border-radius: var(--vkv-radius);
+  }
+}
+
+// ———————————————————————————————————————————————— media viewer (photo / video / gif / avatar)
+
+html.is-vkgram {
+  .media-viewer-whole {
+    z-index: var(--vkv-z);
+    font-family: var(--vkv-font);
+
+    // Web K reads its accent from these: the progress, the volume, the switches follow VK blue
+    --primary-color: var(--vkv-blue);
+    --primary-color-rgb: 81, 129, 184;
+    --secondary-text-color: var(--vkv-text-faint);
+  }
+
+  // the flat field. It is on `.media-viewer` (inside `.overlays`), not on the whole layer: it then
+  // fades together with the picture's flight when the viewer closes, as Web K's own dim does
+  .media-viewer {
+    background: var(--vkv-backdrop);
+  }
+
+  .overlays {
+    background-color: transparent;
+  }
+
+  // — the top bar: who and when on the left, the buttons on the right, over a soft shade
+  .media-viewer-topbar {
+    box-sizing: border-box;
+    height: 52px;
+    padding: 0 10px 0 14px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, .72) 0%, rgba(0, 0, 0, 0) 100%);
+
+    .media-viewer-author {
+      opacity: .92;
+    }
+
+    .btn-icon {
+      width: 40px;
+      height: 40px;
+      opacity: .75;
+      @include vkv-flat-button;
+    }
+
+    .media-viewer-author:hover,
+    .btn-icon:hover,
+    .btn-icon:focus-visible {
+      opacity: 1;
+    }
+  }
+
+  // the author: a square avatar (as everywhere in VKgram), the name in the light link blue, the date quiet
+  .media-viewer-userpic {
+    --size: 32px;
+    width: 32px;
+    height: 32px;
+    margin-inline-end: 10px;
+
+    &,
+    .avatar-image,
+    .avatar-photo,
+    img,
+    canvas {
+      border-radius: var(--vkv-radius) !important;
+    }
+  }
+
+  .media-viewer-author-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .media-viewer-name,
+  .media-viewer-name .peer-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--vkv-link) !important;
+  }
+
+  .media-viewer-author:hover .media-viewer-name {
+    text-decoration: underline;
+  }
+
+  .media-viewer-date {
+    font-size: 11px;
+    line-height: 1.3;
+    color: var(--vkv-text-dim) !important;
+  }
+
+  .media-viewer-buttons {
+    padding: 6px 8px;
+    gap: 2px;
+
+    // ✕ is the last one: a thin line parts it from the actions
+    .btn-icon:last-child {
+      margin-inline-start: 6px;
+      box-shadow: -6px 0 0 -5px var(--vkv-line);
+    }
+  }
+
+  // — the picture / video: NO frame, outline or shadow of its own. The media is often not a rectangle
+  //   (a round avatar video, a sticker, a picture mid-flight into a round avatar): a square outline or
+  //   shadow on the aspecter showed up as a grey square ghost around it, and stayed over the page while
+  //   the viewer closed.
+
+  // — the caption: a dark shade over the bottom edge, the text left-aligned as under a photo in VK
+  .media-viewer-caption {
+    --link-color: var(--vkv-link) !important;
+    box-sizing: border-box;
+    text-align: left;
+    font-size: 13px;
+    line-height: 1.45;
+    background: linear-gradient(0deg, rgba(0, 0, 0, .78) 0%, rgba(0, 0, 0, 0) 100%);
+
+    a,
+    .anchor-url {
+      color: var(--vkv-link);
+    }
+
+    &.is-focused {
+      background: rgba(0, 0, 0, .92);
+    }
+
+    &-button {
+      border-radius: var(--vkv-radius);
+      background-color: var(--vkv-blue);
+
+      &:hover {
+        background-color: var(--vkv-blue-hover);
+      }
+    }
+  }
+
+  // the caption is legible without the pointer over it (Web K dims it to .4)
+  &.no-touch .media-viewer-whole.active .media-viewer-caption {
+    opacity: .85;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  &.is-touch .media-viewer-whole.active .media-viewer-caption {
+    opacity: .9;
+  }
+
+  // — prev / next: a flat square tab at the edge of the screen (the VK arrows)
+  .media-viewer-prev-button,
+  .media-viewer-next-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 80px;
+    font-size: 1.75rem;
+    border-radius: var(--vkv-radius);
+    background-color: rgba(0, 0, 0, .45);
+    transition: background-color .12s ease, opacity .16s ease;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, .78);
+    }
+  }
+
+  .media-viewer-prev-button {
+    left: 16px;
+  }
+
+  .media-viewer-next-button {
+    right: 16px;
+  }
+
+  // — the zoom bar: a flat dark plate, VK blue range
+  .zoom-container {
+    border-radius: var(--vkv-radius);
+    border: 1px solid var(--vkv-line);
+    background-color: var(--vkv-panel);
+
+    .btn-icon {
+      border-radius: var(--vkv-radius);
+    }
+
+    .progress-line {
+      --color: var(--vkv-blue);
+    }
+  }
+
+  // — the controls of a video: VK blue progress, flat thumb
+  .media-viewer-whole .ckin__player,
+  .media-viewer-whole .ckin__controls {
+    --primary-color: var(--vkv-blue);
+    font-family: var(--vkv-font);
+  }
+
+  .media-viewer-whole .progress-line {
+    --color: var(--vkv-blue);
+  }
+
+  .media-viewer-whole .progress-line__filled,
+  .media-viewer-whole .progress-line__seek::-webkit-slider-thumb {
+    background-color: var(--vkv-blue);
+  }
+
+  .media-viewer-whole .progress-line__seek::-webkit-slider-thumb {
+    border-radius: 1px;
+  }
+
+  .media-progress-line {
+    --primary-color: var(--vkv-blue);
+  }
+
+  .media-viewer-whole .btn-icon.inactive {
+    opacity: .4;
+  }
+}
+
+// ———————————————————————————————————————————————— film strip under the picture (`vk-viewer-strip`)
+// (a bar of the previews with the counter; mounted by `utils/viewerStrip.tsx` when present)
+
+@keyframes vkv-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+html.is-vkgram {
+  .media-viewer-whole.vk-has-strip .media-viewer-caption {
+    margin-bottom: 84px;
+  }
+
+  .vk-viewer-strip-host {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 5;
+    pointer-events: none; // only the bar takes the pointer: the picture above stays clickable / draggable
+  }
+
+  .vk-viewer-strip {
+    pointer-events: auto;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 76px;
+    padding: 10px max(10px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px))
+      max(10px, env(safe-area-inset-left, 0px));
+    background: var(--vkv-panel);
+    border-top: 1px solid var(--vkv-line);
+    font-family: var(--vkv-font);
+    animation: vkv-fade-in .15s ease-out;
+  }
+
+  .vk-viewer-strip-count {
+    flex: none;
+    min-width: 64px;
+    color: var(--vkv-text-faint);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .vk-viewer-strip-list {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    gap: 4px;
+    padding: 3px 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    // few previews stand in the middle, many scroll
+    &::before,
+    &::after {
+      content: '';
+      margin: auto;
+    }
+  }
+
+  .vk-viewer-thumb {
+    position: relative;
+    flex: none;
+    box-sizing: border-box;
+    width: 56px;
+    height: 56px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: var(--vkv-radius);
+    background-color: rgba(255, 255, 255, .08);
+    cursor: pointer;
+    opacity: .55;
+    outline: 0;
+    transition: opacity .12s ease, box-shadow .12s ease;
+
+    > *,
+    img,
+    canvas,
+    video {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover;
+      pointer-events: none;
+    }
+
+    &:hover {
+      opacity: .85;
+    }
+
+    &:focus-visible {
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, .6);
+    }
+
+    &.is-current {
+      opacity: 1;
+      box-shadow: 0 0 0 2px var(--vkv-blue);
+    }
+  }
+}
+
+// ———————————————————————————————————————————————— small screens
+
+@media (max-width: 600px) {
+  html.is-vkgram {
+    .media-viewer {
+      background: #000;
+    }
+
+    // a phone: the bar and the caption respect the notch and the home bar
+    .media-viewer-topbar {
+      height: auto;
+      min-height: 44px;
+      padding: env(safe-area-inset-top, 0px) max(6px, env(safe-area-inset-right, 0px)) 0 max(6px, env(safe-area-inset-left, 0px));
+      background: linear-gradient(180deg, rgba(0, 0, 0, .7) 0%, rgba(0, 0, 0, 0) 100%);
+    }
+
+    .media-viewer-caption {
+      margin-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    [class*="ViewerStoryFooter_"] {
+      height: 48px;
+    }
+
+    .vk-viewer-strip-count {
+      display: none;
+    }
+
+    .vk-viewer-thumb {
+      width: 44px;
+      height: 44px;
+    }
+
+    .vk-viewer-strip {
+      min-height: 64px;
+    }
+
+    .media-viewer-whole.vk-has-strip .media-viewer-caption {
+      margin-bottom: 72px;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.is-vkgram {
+    [class*="ViewerStoryContentMediaContainer"],
+    .media-viewer-prev-button,
+    .media-viewer-next-button,
+    .media-viewer-whole .btn-icon,
+    .vk-viewer-strip,
+    .vk-viewer-thumb {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+}

@@ -978,25 +978,21 @@ export class AppProfileManager extends AppManager {
     }).then(() => {
       const myId = this.rootScope.myId;
 
-      if(!channelId) {
-        this.modifyCachedFullUser(myId.toUserId(), (userFull) => {
+      // the API call succeeded, so the new state is known for sure: write it into
+      // the cache instead of re-fetching the fullUser (the server can answer the
+      // old state here, and the answer would be locked in for the cache TTL)
+      this.modifyCachedFullUser(myId.toUserId(), (userFull) => {
+        if(channelId) {
+          userFull.personal_channel_id = channelId;
+          userFull.personal_channel_message = this.dialogsStorage.getDialogOnly(channelId.toPeerId(true))?.top_message;
+        } else {
           delete userFull.personal_channel_id;
           delete userFull.personal_channel_message;
-          return true;
-        });
-        return;
-      }
+        }
+      });
 
-      const dialog = this.dialogsStorage.getDialogOnly(channelId.toPeerId(true));
-      if(dialog) {
-        this.modifyCachedFullUser(myId.toUserId(), (userFull) => {
-          userFull.personal_channel_id = channelId;
-          userFull.personal_channel_message = dialog.top_message;
-          return true;
-        });
-      } else {
-        this.refreshFullPeer(myId);
-      }
+      // the mutated cache must stay the answer when the UI re-reads it after this update
+      this.fullExpiration[myId.toPeerId(false)] = Date.now() + PEER_FULL_TTL;
     });
   }
 

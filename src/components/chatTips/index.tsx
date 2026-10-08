@@ -165,7 +165,7 @@ function ChatTipsDeck() {
         <Portal mount={document.body}>
           <Button.Icon
             ref={pinServiceColor}
-            class={styles.toggleButton}
+            class={classNames(styles.toggleButton, TOGGLE_CLASS)}
             icon={hidden() ? 'lamp_filled' : 'close'}
             aria-label={I18n.format('ChatTips.Title', true)}
             aria-expanded={!hidden()}
@@ -247,6 +247,11 @@ function ChatTipsDeck() {
  */
 const MOUNT_CLASS = 'chat-tips-mount';
 
+// The same plain-class rule for the corner toggle. It is portalled to <body>, away from the deck
+// the mount carries, and VKgram's stylesheet hides it by this name whenever the Telegram UI the
+// deck belongs to is not on screen — the rehashed module class there can't be targeted.
+const TOGGLE_CLASS = 'chat-tips-toggle';
+
 type MountElement = HTMLElement & {disposeChatTips?: () => void};
 
 /**
@@ -272,7 +277,7 @@ export function renderChatTips(anchor: HTMLElement) {
     </SolidJSHotReloadGuardProvider>
   ), container);
 
-  if(import.meta.hot) {
+  if(import.meta.hot?.data) {
     import.meta.hot.data.anchor = anchor;
   }
 }
@@ -283,8 +288,8 @@ if(import.meta.hot) {
   // `appImManager` calls `renderChatTips` once, at start-up. A hot update of this module — or of
   // any card or of the stylesheet, which all propagate up to here — re-evaluates the file with
   // nobody left to mount it, and the deck just vanishes. Re-mount onto the anchor the previous
-  // instance recorded.
-  const anchor = import.meta.hot.data.anchor as HTMLElement | undefined;
+  // instance recorded. (`data` is an object in vite's HMR; test runners give a `hot` without one.)
+  const anchor = import.meta.hot.data?.anchor as HTMLElement | undefined;
   if(anchor?.isConnected) {
     renderChatTips(anchor);
   }

@@ -24,12 +24,14 @@ export type ChannelHistoryStatus = 'loading' | 'loaded' | 'error';
 export default function createChannelHistory(options: {
   peerId: Accessor<PeerId>,
   inputFilter?: MyInputMessagesFilter,
+  // the comments of a post: the thread of its discussion message (`peerId` is then the discussion group)
+  threadId?: number,
   pageSize?: number
 }) {
   const pageSize = options.pageSize ?? 20;
   const listenerSetter = createListenerSetter();
 
-  const [messages, setMessages] = createSignal<Message.message[]>([], {equals: false});
+  const [messages, setMessages] = createSignal<(Message.message | Message.messageService)[]>([], {equals: false});
   const [status, setStatus] = createSignal<ChannelHistoryStatus>('loading');
   const [isLoadingMore, setLoadingMore] = createSignal(false);
   const [isEnd, setEnd] = createSignal(false);
@@ -39,7 +41,7 @@ export default function createChannelHistory(options: {
   let generation = 0;
   let loading = false;
 
-  const getSorted = (list: Message.message[]) => list.sort((a, b) => b.mid - a.mid);
+  const getSorted = (list: (Message.message | Message.messageService)[]) => list.sort((a, b) => (b as any).mid - (a as any).mid);
 
   const load = async(reset: boolean) => {
     if(loading && !reset) return;
@@ -65,6 +67,7 @@ export default function createChannelHistory(options: {
         peerId,
         limit: pageSize,
         offsetId: last?.mid || 0,
+        ...(options.threadId ? {threadId: options.threadId} : {}),
         ...(options.inputFilter ? {
           inputFilter: {_: options.inputFilter},
           offsetPeerId: last?.peerId || NULL_PEER_ID,
@@ -73,10 +76,9 @@ export default function createChannelHistory(options: {
       });
       if(current !== generation) return;
 
-      // a mid can have no message behind it (deleted, a synthetic bound) — skip such holes;
-      // service messages (channel created, photo changed…) are not publications
+      // include both regular messages and service messages (channel events, user joins, etc.)
       const page = (result.messages ?? result.history.map((mid) => apiManagerProxy.getMessageByPeer(peerId, mid)))
-      .filter((message) => message?._ === 'message') as Message.message[];
+      .filter((message) => message && (message._ === 'message' || message._ === 'messageService')) as (Message.message | Message.messageService)[];
 
       const known = new Set(reset ? [] : messages().map((message) => message.mid));
       const fresh = page.filter((message) => !known.has(message.mid));
@@ -108,9 +110,15 @@ export default function createChannelHistory(options: {
 
   // * live updates
   const matches = (message: {peerId?: PeerId, _?: string}) => message?.peerId === options.peerId();
+  // a comment belongs to the thread when it replies to the post or to another comment of it
+  const isInThread = (message: Message.message) => {
+    const replyTo = message.reply_to as {reply_to_msg_id?: number, reply_to_top_id?: number} | undefined;
+    return replyTo?.reply_to_top_id === options.threadId || replyTo?.reply_to_msg_id === options.threadId;
+  };
   listenerSetter.add(rootScope)('history_append', ({message}) => {
     // a filtered list (shared media) is decided by the server; only the feed takes live posts
     if(options.inputFilter || !matches(message) || message._ !== 'message') return;
+    if(options.threadId && !isInThread(message)) return;
     setMessages((list) => list.some((item) => item.mid === message.mid) ? list : getSorted([...list, message]));
     setCount((value) => value === undefined ? value : value + 1);
   });
@@ -135,6 +143,11 @@ export default function createChannelHistory(options: {
       const update = changed.find((update) => update.message.mid === item.mid);
       return update ? update.message as Message.message : item;
     }));
+  });
+  // a sent comment: the temporary message is replaced by the real one
+  listenerSetter.add(rootScope)('message_sent', ({tempId, message}) => {
+    if(!options.threadId || !matches(message) || message._ !== 'message') return;
+    setMessages((list) => getSorted([...list.filter((item) => item.mid !== tempId && item.mid !== message.mid), message]));
   });
   listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
     if(peerId !== options.peerId()) return;

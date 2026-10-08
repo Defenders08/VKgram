@@ -1,0 +1,100 @@
+<!doctype html>
+<!-- Dev replica of the mobile side menu (drawer): the exact DOM VKSidebar renders in its
+     drawer variant, over a fake content area. Only vk-base.scss is loaded; the avatar is a
+     mock (Web K's .avatar styles are absent here). Served by `pnpm start` at /vk-menu-dev.html -->
+<html class="is-vkgram">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VKgram — меню (dev)</title>
+  <script type="module" src="/vk-menu-dev.ts"></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    /* the app shell on a dev page: the real app fixes .vkgram to the viewport */
+    .vkgram { height: 100vh !important; }
+    .vk-menu-dev-content {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--vk-page-bg);
+      color: var(--vk-text-secondary);
+    }
+    /* mock avatar: Web K's .avatar styles are absent on a dev page */
+    .vk-menu-header-avatar.avatar-mock {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7d9cc0, #597da3);
+      color: #fff;
+      font-size: 15px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+<div class="vkgram vk-mobile-layout">
+  <div class="vk-mobile-body">
+    <div class="vk-menu-dev-content">контент за меню</div>
+    <div class="vk-mobile-drawer-layer">
+      <div class="vk-mobile-backdrop"></div>
+      <aside id="vk-mobile-more" class="vk-mobile-drawer" aria-label="Меню">
+        <nav class="vk-sidebar is-drawer" aria-label="Главное меню">
+          <button type="button" class="vk-menu-header" aria-current="page">
+            <span class="vk-menu-header-avatar avatar-mock">ИП</span>
+            <span class="vk-menu-header-main">
+              <span class="vk-menu-header-name">Иван Петров</span>
+              <span class="vk-menu-header-username">@ivan</span>
+            </span>
+            <svg class="vk-menu-header-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+          </button>
+
+          <div class="vk-miniplayer is-drawer" role="group" aria-label="Плеер">
+            <div class="vk-miniplayer-controls">
+              <button type="button" class="vk-miniplayer-button" aria-label="Предыдущий трек"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 2.5h1.8v11H2zM14 2.5v11L5.6 8z" fill="currentColor"/></svg></button>
+              <button type="button" class="vk-miniplayer-button" aria-label="Пауза"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z" fill="currentColor"/></svg></button>
+              <button type="button" class="vk-miniplayer-button" aria-label="Следующий трек"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M14 2.5h-1.8v11H14zM2 2.5v11L10.4 8z" fill="currentColor"/></svg></button>
+            </div>
+            <div class="vk-miniplayer-info">
+              <span class="vk-miniplayer-title">Название трека подлиннее</span>
+              <span class="vk-miniplayer-meta">1:23 • Исполнитель</span>
+            </div>
+            <button type="button" class="vk-miniplayer-button vk-miniplayer-close" aria-label="Закрыть плеер"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+
+          <ul class="vk-sidebar-list">
+            <li><button type="button" class="vk-sidebar-item with-icon"><svg class="vk-sidebar-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="13" height="14" rx="1.5"/><path d="M16.5 8H19a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-2.5"/><line x1="7" y1="9" x2="13" y2="9"/><line x1="7" y1="12" x2="13" y2="12"/><line x1="7" y1="15" x2="10.5" y2="15"/></svg><span class="vk-sidebar-item-text">Новости</span></button></li>
+            <li><button type="button" class="vk-sidebar-item with-icon is-active has-badge" aria-current="page"><svg class="vk-sidebar-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="1.5"/><path d="m5.5 8 5.3 3.8c.7.5 1.7.5 2.4 0L18.5 8"/></svg><span class="vk-sidebar-item-text">Сообщения</span><span class="vk-sidebar-item-badge">5</span></button></li>
+            <li><button type="button" class="vk-sidebar-item with-icon"><svg class="vk-sidebar-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.5" cy="8.5" r="3.5"/><path d="M3.5 19.5c0-3.3 2.7-5.2 6-5.2s6 1.9 6 5.2"/><path d="M16 5.3a3 3 0 0 1 0 5.9"/><path d="M17.5 14.7c1.9.6 3 2.1 3 4.3"/></svg><span class="vk-sidebar-item-text">Друзья</span></button></li>
+            <li><button type="button" class="vk-sidebar-item with-icon"><svg class="vk-sidebar-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4h2.5L11 17.5v-11L6.5 10H4Z"/><path d="M14.5 9.5a3.5 3.5 0 0 1 0 5"/><path d="M17 7.5a6 6 0 0 1 0 9"/></svg><span class="vk-sidebar-item-text">Каналы</span></button></li>
+            <li><button type="button" class="vk-sidebar-item with-icon"><svg class="vk-sidebar-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V6.5l10-2V16"/><line x1="9" y1="10" x2="19" y2="8"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg><span class="vk-sidebar-item-text">Аудиозаписи</span></button></li>
+            <li><button type="button" class="vk-sidebar-item with-icon"><svg class="vk-sidebar-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="1.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4.5 3.5 3 3-2.5L20 17"/></svg><span class="vk-sidebar-item-text">Фотографии</span></button></li>
+            <li><button type="button" class="vk-sidebar-item with-icon"><svg class="vk-sidebar-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="12.5" height="12" rx="1.5"/><path d="m16 10.5 4.5-2.5v8L16 13.5"/></svg><span class="vk-sidebar-item-text">Видеозаписи</span></button></li>
+            <li><button type="button" class="vk-sidebar-item with-icon"><svg class="vk-sidebar-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7.5A1.5 1.5 0 0 0 6 5v14a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 18 19V7.5L14 3.5Z"/><path d="M14 3.5v4h4"/><line x1="9" y1="12.5" x2="15" y2="12.5"/><line x1="9" y1="16" x2="13" y2="16"/></svg><span class="vk-sidebar-item-text">Документы</span></button></li>
+            <li><button type="button" class="vk-sidebar-item with-icon"><svg class="vk-sidebar-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg><span class="vk-sidebar-item-text">Приложения</span></button></li>
+          </ul>
+
+          <div class="vk-sidebar-divider"></div>
+
+          <ul class="vk-sidebar-list">
+            <li><button type="button" class="vk-sidebar-item with-icon"><svg class="vk-sidebar-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 4 3.7 10.7c-.9.35-.85 1.65.08 1.9l4.45 1.2 1.65 5.05c.28.86 1.37 1.08 2.12.42l2.45-2.16 4.28 3.05c.77.55 1.84.14 2.02-.79L23 5.35C23.2 4.43 22.05 3.6 21 4Z"/><path d="m8.4 13.8 9.9-6.3-6.7 8.1"/></svg><span class="vk-sidebar-item-text">Телеграм</span></button></li>
+            <li><button type="button" class="vk-sidebar-item with-icon"><svg class="vk-sidebar-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.51 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.28.63.9 1.04 1.51 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></svg><span class="vk-sidebar-item-text">Настройки</span></button></li>
+          </ul>
+
+          <div class="vk-sidebar-divider"></div>
+
+          <ul class="vk-sidebar-list">
+            <li><button type="button" class="vk-sidebar-item vk-sidebar-item-logout with-icon"><svg class="vk-sidebar-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4.5h3.5A1.5 1.5 0 0 1 19 6v12a1.5 1.5 0 0 1-1.5 1.5H14"/><polyline points="9.5 8 5.5 12 9.5 16"/><line x1="5.5" y1="12" x2="14.5" y2="12"/></svg><span class="vk-sidebar-item-text">Выйти</span></button></li>
+          </ul>
+        </nav>
+      </aside>
+    </div>
+  </div>
+</div>
+<button id="night-toggle" type="button" style="position: fixed; top: 4px; right: 4px; z-index: 99;">night</button>
+</body>
+</html>

@@ -1,16 +1,20 @@
-import {createMemo, Show} from 'solid-js';
+import {createMemo, createSignal, Show} from 'solid-js';
 import type {Birthday} from '@layer';
 import I18n from '@lib/langPack';
 import {createVKPrivacy, VK_PRIVACY_TYPE_TITLES} from '@/vkgram/privacy';
-import {openVKSettings} from '@/vkgram/pages/settings/route';
+import VKBirthdayPrivacyModal from '@/vkgram/pages/profile/VKBirthdayPrivacyModal';
+import VKBirthdayModal from '@/vkgram/pages/profile/VKBirthdayModal';
 
 /**
  * Birthday row of «Моя страница»: the value, Web K's own birthday popup to
  * change it (it saves through appProfileManager.setMyBirthday, and the full
- * peer store brings the new date back here), and who can see it.
+ * peer store brings the new date back here), and who can see it («Настроить»
+ * opens that setting in a modal, on the spot).
  */
 export default function VKProfileBirthday(props: {birthday?: Birthday}) {
   const privacy = createVKPrivacy('inputPrivacyKeyBirthday');
+  const [isPrivacyOpen, setIsPrivacyOpen] = createSignal(false);
+  const [isEditOpen, setIsEditOpen] = createSignal(false);
 
   const text = createMemo(() => {
     const value = props.birthday;
@@ -21,15 +25,6 @@ export default function VKProfileBirthday(props: {birthday?: Birthday}) {
     }).element;
   });
 
-  const edit = async() => {
-    const {default: showBirthdayPopup, saveMyBirthday} = await import('@components/popups/birthday');
-    showBirthdayPopup({
-      initialDate: props.birthday,
-      fromProfile: true,
-      onSave: saveMyBirthday
-    });
-  };
-
   return (
     <div class="vk-profile-info-row">
       <dt>День рождения</dt>
@@ -38,7 +33,7 @@ export default function VKProfileBirthday(props: {birthday?: Birthday}) {
           {text() ?? 'Не указан'}
         </span>
         {' '}
-        <button type="button" class="vk-link-button" onClick={edit}>
+        <button type="button" class="vk-link-button" onClick={() => setIsEditOpen(true)}>
           {props.birthday ? 'Изменить' : 'Добавить'}
         </button>
         <Show when={privacy.type() !== undefined}>
@@ -49,11 +44,27 @@ export default function VKProfileBirthday(props: {birthday?: Birthday}) {
             <button
               type="button"
               class="vk-link-button"
-              onClick={() => openVKSettings({category: 'privacy', item: 'birthday'})}
+              aria-haspopup="dialog"
+              onClick={() => setIsPrivacyOpen(true)}
             >
               Настроить
             </button>
           </div>
+        </Show>
+        <Show when={isEditOpen()}>
+          <VKBirthdayModal
+            initial={props.birthday}
+            privacy={privacy}
+            onOpenPrivacy={() => {
+              // one window at a time: Escape and Tab belong to the topmost one
+              setIsEditOpen(false);
+              setIsPrivacyOpen(true);
+            }}
+            onClose={() => setIsEditOpen(false)}
+          />
+        </Show>
+        <Show when={isPrivacyOpen()}>
+          <VKBirthdayPrivacyModal privacy={privacy} onClose={() => setIsPrivacyOpen(false)} />
         </Show>
       </dd>
     </div>

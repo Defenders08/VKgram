@@ -1,6 +1,7 @@
 import {createResource, createSignal, createUniqueId, For, Show} from 'solid-js';
 import rootScope from '@lib/rootScope';
 import I18n from '@lib/langPack';
+import {markVKgramLanguageChosen} from '@/vkgram/language';
 
 /**
  * Interface language — exactly what Web K's language tab does: the "web"
@@ -21,6 +22,8 @@ export default function VKSettingsLanguage() {
 
   const choose = (langCode: string) => {
     setSelected(langCode);
+    // from now on the default (Russian) no longer overrides the language
+    markVKgramLanguageChosen();
     // every listed language comes from the "web" pack
     I18n.getLangPackAndApply(langCode, true);
   };

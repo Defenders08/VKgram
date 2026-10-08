@@ -149,12 +149,14 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   public muted: boolean;
   public playbackRate: number;
   public loop: boolean;
+  public shuffle: boolean;
   public round: boolean;
   private _volume: number;
   private _boost: number;
   private _muted: boolean;
   private _playbackRate: number;
   private _loop: boolean;
+  private _shuffle: boolean;
   private _round: boolean;
   private lockedSwitchers: boolean;
   private playbackRates: Record<PlaybackMediaType, number> = {
@@ -234,6 +236,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       'muted' as const,
       'playbackRate' as const,
       'loop' as const,
+      'shuffle' as const,
       'round' as const
     ];
     keys.forEach((key) => {
@@ -365,7 +368,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
   }
 
   public getPlaybackParams() {
-    const {volume, boost, muted, playbackRate, playbackRates, loop, round} = this;
+    const {volume, boost, muted, playbackRate, playbackRates, loop, shuffle, round} = this;
     return {
       volume,
       boost,
@@ -373,6 +376,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       playbackRate,
       playbackRates,
       loop,
+      shuffle,
       round
     };
   }
@@ -387,6 +391,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
     this._muted = params.muted;
     this._playbackRate = params.playbackRate;
     this._loop = params.loop;
+    this._shuffle = params.shuffle ?? false;
     this._round = params.round;
   }
 

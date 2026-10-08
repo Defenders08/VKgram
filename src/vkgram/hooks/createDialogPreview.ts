@@ -5,6 +5,7 @@ import wrapMessageForReply from '@components/wrappers/messageForReply';
 import wrapPeerTitle from '@components/wrappers/peerTitle';
 import renderDialogSubtitleParts from '@components/wrappers/dialogSubtitle';
 import {getMiddleware} from '@helpers/middleware';
+import middlewarePromise from '@helpers/middlewarePromise';
 import {formatDateAccordingToTodayNew} from '@helpers/date';
 import type {Dialog, MyMessage} from '@appManagers/appMessagesManager';
 
@@ -41,7 +42,9 @@ export default function createDialogPreview(dialog: Accessor<Dialog>) {
 
     const middlewareHelper = getMiddleware();
     onCleanup(() => middlewareHelper.destroy());
-    const middleware = middlewareHelper.get();
+    // * the subtitle renderer awaits its "middleware" over every promise —
+    // * a raw MiddlewareHelper's middleware is a () => boolean, not a wrapper
+    const middleware = middlewarePromise(middlewareHelper.get());
 
     if(!previewEl) return;
     if(!message) {
@@ -53,12 +56,11 @@ export default function createDialogPreview(dialog: Accessor<Dialog>) {
       peerId,
       isSaved: false,
       lastMessage: message,
-      middleware: middleware as any,
+      middleware,
       textColor: 'secondary-text-color',
       messageRenderer: wrapMessageForReply,
       peerTitleRenderer: wrapPeerTitle
     }).then((parts) => {
-      if(!middleware()) return;
       previewEl.replaceChildren(...parts);
     }, () => {
       // interrupted by a newer message — nothing to do

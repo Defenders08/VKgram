@@ -6,6 +6,10 @@
 // a non-painting tab still boots
 import '@helpers/dom/previewUnfreeze';
 import '@helpers/dom/previewRaf';
+// VKgram's boot cover: it has to be installed before the heavy modules below evaluate (they start building
+// Web K's own UI and wallpaper), so it is imported right here, not at the end of the list
+import {removeVKgramSplash, isVKgramEnabled} from '@/vkgram/boot';
+import {applyVKgramDefaultLanguage} from '@/vkgram/language';
 import App from '@config/app';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import {IS_STICKY_INPUT_BUGGED} from '@helpers/dom/fixSafariStickyInputFocusing';
@@ -368,6 +372,9 @@ function onInstanceDeactivated(reason: InstanceDeactivateReason) {
 
   document.body.classList.add('deactivated');
 
+  // the deactivation popup takes the screen: the boot splash has nothing to wait for
+  removeVKgramSplash();
+
   const header = document.createElement('div');
   header.classList.add('header');
   header.append(i18n(map[reason].title));
@@ -434,6 +441,8 @@ if(import.meta.env.DEV) {
   // before chunking, and with it the whole sandbox chunk. Behind the imported const alone the
   // branch still folds away, but a ~150 KB orphan chunk is emitted that nothing ever loads.
   if(import.meta.env.DEV && IS_POPUP_SANDBOX) {
+    // the sandbox replaces the whole UI: the boot splash has nothing to cover anymore
+    removeVKgramSplash();
     const {startPopupSandbox} = await import('@components/popupSandbox');
     await startPopupSandbox();
     return;
@@ -451,6 +460,10 @@ if(import.meta.env.DEV) {
   await preventCrossTabDynamicImportDeadlock();
 
   await PasscodeLockScreenController.waitForUnlock(async() => {
+    // this callback only runs when the app IS locked: the lock screen takes the
+    // screen next, so the boot splash has nothing to cover for VKgram
+    removeVKgramSplash();
+
     const settings = await commonStateStorage.get('settings');
     settings && setAppSettingsSilent(settings);
     themeController.setThemeListener();
@@ -458,7 +471,8 @@ if(import.meta.env.DEV) {
     appChatBackground.attach();
     appChatBackground.setBackground({transition: 'instant'});
 
-    const langPack = await I18n.getCacheLangPackAndApply();
+    const defaultLangPack = await applyVKgramDefaultLanguage();
+    const langPack = defaultLangPack || await I18n.getCacheLangPackAndApply();
     setDocumentLangPackProperties(langPack);
 
     if(IS_BETA) import('./pages/bootstrapIm'); // cache it
@@ -507,7 +521,8 @@ if(import.meta.env.DEV) {
     setUnreadMessagesText();
   };
 
-  const langPack = await I18n.getCacheLangPackAndApply();
+  const defaultLangPack = await applyVKgramDefaultLanguage();
+  const langPack = defaultLangPack || await I18n.getCacheLangPackAndApply();
   console.timeLog(TIME_LABEL, 'await I18n.getCacheLangPack()');
   const [appSettings] = useAppSettings();
   I18n.setTimeFormat(appSettings.timeFormat);
@@ -637,8 +652,17 @@ if(import.meta.env.DEV) {
 
     }
 
-    const {mountAuthFlow} = await import('./pages/mountAuthFlow');
-    mountAuthFlow(authState);
+    if(isVKgramEnabled()) {
+      // the same flow, but on the VKgram page (the blue bar, the white block). The boot cover stays over
+      // the screen while its chunk loads — `mountVKLoginFlow` lifts it once the login page is painted
+      // (lifting it here showed Web K's own wallpaper for the whole chunk load)
+      const {mountVKLoginFlow} = await import('@/vkgram/pages/VKLoginHost');
+      mountVKLoginFlow(authState);
+    } else {
+      removeVKgramSplash();
+      const {mountAuthFlow} = await import('./pages/mountAuthFlow');
+      mountAuthFlow(authState);
+    }
   } else {
     console.log('Will mount IM page:', Date.now() / 1000);
 

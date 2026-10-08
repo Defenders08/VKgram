@@ -5,6 +5,7 @@ import isNativeVoiceRecorderSupported from '@helpers/voiceRecorder/isNativeSuppo
 import rootScope from '@lib/rootScope';
 
 import {disposeActiveAuthFlow} from '@/pages/mountAuthFlow';
+import {removeVKgramSplash} from '@/vkgram/boot';
 import {isVKgramEnabled, mountVKResponsiveLayout} from '@/vkgram/layouts/VKResponsiveLayout';
 
 let bootstrapped = false;
@@ -59,6 +60,9 @@ export async function bootstrapIm(): Promise<void> {
     try {
       mountVKResponsiveLayout(pageChatsEl);
     } catch(err) {
+      // the boot splash covers the screen until the layout takes over — with the
+      // mount failed there is no layout, so the Web K fallback must be revealed
+      removeVKgramSplash();
       console.error('VKgram: layout mount failed, falling back to Web K UI', err);
     }
   }

@@ -7,6 +7,10 @@ import styles from '@/pages/authFlow.module.scss';
 /**
  * Reusable card scaffold for the auth flow.
  *
+ * The root also carries the stable global class `auth-card` — the hook the
+ * VKgram login skin (vk-base.scss) restyles the card surface through, the
+ * CSS-module class next to it is hashed.
+ *
  * Renders a rounded surface and (optionally) wraps the children in
  * `.input-wrapper`. The header (sticker / title / subtitle) lives in `header`,
  * which sits above the input-wrapper. Most cards pass a `<MediaHeader>` here.
@@ -51,7 +55,7 @@ export default function AuthCard(props: AuthCardProps): JSX.Element {
   const useInputWrapper = () => props.inputWrapper !== false;
 
   return (
-    <div class={classNames(styles.card, props.class)}>
+    <div class={classNames('auth-card', styles.card, props.class)}>
       {props.header}
       <Show when={useInputWrapper()} fallback={props.children}>
         <div class="input-wrapper">{props.children}</div>

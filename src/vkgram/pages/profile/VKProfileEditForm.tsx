@@ -1,4 +1,4 @@
-import {createResource, createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {createEffect, createResource, createSignal, onCleanup, onMount, Show} from 'solid-js';
 import type {User, UserFull} from '@layer';
 import rootScope from '@lib/rootScope';
 import ListenerSetter from '@helpers/listenerSetter';
@@ -14,12 +14,25 @@ import getPeerEditableUsername from '@appManagers/utils/peers/getPeerEditableUse
  * profile tab (sidebarLeft/tabs/editProfile.tsx) — updateProfile for the
  * names + bio, updateUsername for the username (with its live availability
  * check). The saved values reach the page through Web K's peer stores.
+ *
+ * Two looks, one logic (`variant`):
+ *  - `block` (default) — a white block inside a page («Моя страница»);
+ *  - `bare` — fields and actions only, no block and no title of its own:
+ *    «Настройки → Профиль» holds the piece inside its own headed item;
+ *  - `modal` — the body and the footer of a `VKModal` («Моя страница»: the
+ *    modal draws the title and «×», Escape belongs to the modal).
+ * `onSavingChange` tells the host that a save is in flight, so a modal can
+ * hold its «×» / Escape until it is over.
  */
 export default function VKProfileEditForm(props: {
   user: User.user,
   userFull?: UserFull.userFull,
-  onDone: () => void
+  onDone: () => void,
+  variant?: 'block' | 'bare' | 'modal',
+  onSavingChange?: (saving: boolean) => void
 }) {
+  const isModal = props.variant === 'modal';
+  const isBare = props.variant === 'bare';
   const managers = rootScope.managers;
   const listenerSetter = new ListenerSetter();
   onCleanup(() => listenerSetter.removeAll());
@@ -27,6 +40,9 @@ export default function VKProfileEditForm(props: {
   const [bioMaxLength] = createResource(() => managers.apiManager.getLimit('bio'));
   const [saving, setSaving] = createSignal(false);
   const [canSave, setCanSave] = createSignal(false);
+  createEffect(() => props.onSavingChange?.(saving()));
+  // a modal reports «not saving» when it goes away, so the host is never left holding
+  onCleanup(() => props.onSavingChange?.(false));
 
   let firstNameField: InputField;
   let lastNameField: InputField;
@@ -67,7 +83,8 @@ export default function VKProfileEditForm(props: {
     lastNameField.setOriginalValue(props.user.last_name, true);
     usernameField.setOriginalValue(getPeerEditableUsername(props.user), true);
     updateCanSave();
-    firstNameField.input.focus();
+    // a modal moves the focus itself, once it is in the document (and not onto a touch keyboard)
+    if(!isModal) firstNameField.input.focus();
   });
 
   const onSubmit = async(e: Event) => {
@@ -99,10 +116,74 @@ export default function VKProfileEditForm(props: {
     }
   };
 
+  const fields = () => (
+    <>
+      <InputFieldTsx
+        label="EditProfile.FirstNameLabel"
+        name="first-name"
+        maxLength={70}
+        instanceRef={(ref) => {
+          firstNameField = ref;
+          trackField(ref);
+        }}
+      />
+      <InputFieldTsx
+        label="Login.Register.LastName.Placeholder"
+        name="last-name"
+        maxLength={64}
+        instanceRef={(ref) => {
+          lastNameField = ref;
+          trackField(ref);
+        }}
+      />
+      {usernameField.container}
+      <Show when={bioMaxLength()} keyed>
+        {(maxLength) => (
+          <InputFieldTsx
+            label="EditProfile.BioLabel"
+            name="bio"
+            maxLength={maxLength}
+            instanceRef={(ref) => {
+              bioField = ref;
+              trackField(ref);
+              ref.setOriginalValue(props.userFull?.about, true);
+              updateCanSave();
+            }}
+          />
+        )}
+      </Show>
+    </>
+  );
+
+  const saveButton = () => (
+    <button type="submit" class="vk-button" disabled={!canSave() || saving()}>
+      {saving() ? 'Сохранение…' : 'Сохранить'}
+    </button>
+  );
+  const cancelButton = () => (
+    <button type="button" class="vk-button vk-button-secondary" disabled={saving()} onClick={() => props.onDone()}>
+      Отмена
+    </button>
+  );
+
+  if(isModal) {
+    return (
+      <form class="vk-modal-form" onSubmit={onSubmit}>
+        <div class="vk-modal-body vk-modal-fields">
+          {fields()}
+        </div>
+        <div class="vk-modal-foot">
+          {cancelButton()}
+          {saveButton()}
+        </div>
+      </form>
+    );
+  }
+
   return (
     <form
-      class="vk-block vk-profile-edit"
-      aria-labelledby="vk-profile-edit-title"
+      class={isBare ? 'vk-profile-edit is-bare' : 'vk-block vk-profile-edit'}
+      aria-labelledby={isBare ? undefined : 'vk-profile-edit-title'}
       onSubmit={onSubmit}
       onKeyDown={(e) => {
         if(e.key === 'Escape' && !saving()) {
@@ -111,52 +192,15 @@ export default function VKProfileEditForm(props: {
         }
       }}
     >
-      <h2 id="vk-profile-edit-title" class="vk-block-title">Редактирование профиля</h2>
+      {!isBare && <h2 id="vk-profile-edit-title" class="vk-block-title">Редактирование профиля</h2>}
 
       <div class="vk-profile-edit-fields">
-        <InputFieldTsx
-          label="EditProfile.FirstNameLabel"
-          name="first-name"
-          maxLength={70}
-          instanceRef={(ref) => {
-            firstNameField = ref;
-            trackField(ref);
-          }}
-        />
-        <InputFieldTsx
-          label="Login.Register.LastName.Placeholder"
-          name="last-name"
-          maxLength={64}
-          instanceRef={(ref) => {
-            lastNameField = ref;
-            trackField(ref);
-          }}
-        />
-        {usernameField.container}
-        <Show when={bioMaxLength()} keyed>
-          {(maxLength) => (
-            <InputFieldTsx
-              label="EditProfile.BioLabel"
-              name="bio"
-              maxLength={maxLength}
-              instanceRef={(ref) => {
-                bioField = ref;
-                trackField(ref);
-                ref.setOriginalValue(props.userFull?.about, true);
-                updateCanSave();
-              }}
-            />
-          )}
-        </Show>
+        {fields()}
       </div>
 
       <div class="vk-profile-actions">
-        <button type="submit" class="vk-button" disabled={!canSave() || saving()}>
-          {saving() ? 'Сохранение…' : 'Сохранить'}
-        </button>
-        <button type="button" class="vk-button vk-button-secondary" disabled={saving()} onClick={() => props.onDone()}>
-          Отмена
-        </button>
+        {saveButton()}
+        {cancelButton()}
       </div>
     </form>
   );

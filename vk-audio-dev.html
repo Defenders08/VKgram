@@ -1,0 +1,247 @@
+<!doctype html>
+<!-- Dev replica of the mobile «Друзья» tabs: one strip — sections, Telegram folders and
+     local ones — with a sideways scroll and the «+» pinned at the right end, and the two
+     windows — the combined «Новая папка» (its tabs) and the merged «Настроить».
+     The exact DOM the components render, over vk-base.scss only, no app.
+     Served by `pnpm start` at /vk-audio-dev.html — look at it in a ~375px wide viewport. -->
+<html class="is-vkgram">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VKgram — вкладки «Аудио» (dev)</title>
+  <script type="module" src="/vk-audio-dev.ts"></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    /* the app shell on a dev page: the real app fixes .vkgram to the viewport */
+    .vkgram { height: 100vh !important; }
+    /* the real app lays the page out below the in-flow header; the replica's page
+       slides under it — pad it down so the content is seen where the app shows it */
+    .vk-news-dev-content .vk-page { padding-top: 44px !important; box-sizing: border-box; }
+    /* the real page shows the controls block only on a phone (Show isDesktop) */
+    @media (min-width: 601px) {
+      .vk-messages-controls-block { display: none; }
+    }
+    /* the desktop search card of the real page is a sibling of the content card
+       (Show isDesktop) — the static replica repeats it with CSS */
+    @media (max-width: 600px) {
+      .vk-search-desktop-only { display: none; }
+    }
+    /* the real page hides the mobile strip on a desktop (Show isDesktop) — the static
+       replica repeats it with CSS */
+    @media (min-width: 601px) {
+      .vk-messages-folders-tabs { display: none; }
+    }
+    /* the real app mounts a modal layer only while it is open; here the layer is
+       always in the DOM, so the `hidden` attribute must beat its `display: flex` */
+    .vkgram .vk-modal-layer[hidden] { display: none !important; }
+    .vk-news-dev-body { position: absolute; inset: 0; display: flex; flex-direction: column; }
+    .vk-news-dev-content { flex: 1 1 auto; overflow-y: auto; }
+    .vk-news-dev-buttons { display: flex; gap: 8px; padding: 10px; }
+    .vk-news-dev-buttons button { flex: 1; padding: 10px; }
+  </style>
+</head>
+<body>
+<div class="vkgram vk-mobile-layout">
+  <div class="vk-mobile-body">
+    <div class="vk-news-dev-body">
+
+    <header class="vk-header is-mobile">
+      <div class="vk-header-inner">
+        <button type="button" class="vk-header-menu-button" aria-label="Меню">☰</button>
+        <button type="button" class="vk-header-logo" title="Новости" aria-label="Новости">ВКГРАМ</button>
+        <div class="vk-header-spacer"></div>
+        <button type="button" class="vk-header-action" title="Настроить" aria-label="Настроить" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="18" height="18"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.51 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.28.63.9 1.04 1.51 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="vk-news-dev-content">
+      <div class="vk-page vk-media-page vk-audio">
+        <div class="vk-media-layout">
+          <main class="vk-media-main">
+            <!-- the tabs and the folder group in the look of «Сообщений»: one continuous block -->
+            <div class="vk-messages-controls-block">
+              <div class="vk-block vk-messages-search-block">
+                <div class="vk-messages-search">
+                  <input type="text" class="vk-search" placeholder="Поиск музыки" aria-label="Поиск музыки">
+                </div>
+              </div>
+              <div class="vk-media-mobile-tabs">
+                <div class="vk-tabs">
+                  <div class="vk-tabs-list" role="tablist" aria-label="Аудиозаписи">
+                    <button type="button" class="vk-tab is-active" role="tab" aria-selected="true" tabindex="0">Поиск</button>
+                    <button type="button" class="vk-tab" role="tab" aria-selected="false" tabindex="-1">Избранное</button>
+                    <button type="button" class="vk-tab" role="tab" aria-selected="false" tabindex="-1">Аудиостатус</button>
+                    <button type="button" class="vk-tab" role="tab" aria-selected="false" tabindex="-1">Голосовые</button>
+                    <button type="button" class="vk-tab" role="tab" aria-selected="false" tabindex="-1">Моя музыка</button>
+                    <button type="button" class="vk-tab" role="tab" aria-selected="false" tabindex="-1">Тяжёлый рок</button>
+                    <button type="button" class="vk-tab" role="tab" aria-selected="false" tabindex="-1">Локальная с длинным названием</button>
+                  </div>
+                  <div class="vk-tabs-actions">
+                    <button type="button" class="vk-tabs-add" title="Новая папка" aria-label="Новая папка">+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="vk-block vk-messages-search-block vk-search-desktop-only">
+              <div class="vk-messages-search">
+                <input type="text" class="vk-search" placeholder="Поиск музыки" aria-label="Поиск музыки">
+              </div>
+            </div>
+
+            <section class="vk-block vk-page-block" aria-labelledby="vk-audio-title">
+              <h1 id="vk-audio-title" class="vk-page-title vk-visually-hidden">Аудиозаписи</h1>
+              <div class="vk-media-list" data-kind="music">
+                <ul class="vk-media-rows"></ul>
+              </div>
+            </section>
+          </main>
+        </div>
+      </div>
+    </main>
+
+    <div class="vk-news-dev-buttons">
+      <button type="button" id="show-add">«Новая папка»</button>
+      <button type="button" id="show-customize">«Настроить»</button>
+      <button type="button" id="night-toggle">Ночь</button>
+    </div>
+    </div>
+  </div>
+
+  <!-- the combined «Новая папка» window: both kinds, its tabs -->
+  <div class="vk-modal-layer" id="add-layer" hidden>
+    <div class="vk-modal" role="dialog" aria-label="Новая папка">
+      <div class="vk-modal-head">
+        <h2 class="vk-modal-title">Новая папка</h2>
+        <button type="button" class="vk-link-button vk-modal-close" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="vk-folder-add-tabs">
+        <div class="vk-tabs">
+          <div class="vk-tabs-list" role="tablist" aria-label="Тип папки">
+            <button type="button" class="vk-tab is-active" role="tab" aria-selected="true" tabindex="0">Локальная папка</button>
+            <button type="button" class="vk-tab" role="tab" aria-selected="false" tabindex="-1">Папка Telegram</button>
+          </div>
+        </div>
+      </div>
+      <div class="vk-modal-body vk-folder-create">
+        <div class="vk-folder-name">
+          <input type="text" class="vk-search" placeholder="Название папки" aria-label="Название папки" maxlength="40">
+        </div>
+        <section class="vk-folder-section">
+          <h3 class="vk-folder-section-title">Чаты и каналы</h3>
+          <div class="vk-folder-chats"></div>
+          <button type="button" class="vk-folder-add">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Добавить чаты
+          </button>
+          <p class="vk-folder-note vk-page-text-secondary">Папка появится под вкладками «Сообщений», «Друзей», «Каналов» и «Новостей»: в каждом разделе она покажет свои диалоги, друзей или каналы из этого набора. Папка хранится только в VKgram (в настройках приложения), в Telegram она не появится.</p>
+        </section>
+      </div>
+      <div class="vk-modal-foot">
+        <button type="button" class="vk-button vk-button-secondary">Отмена</button>
+        <button type="button" class="vk-button">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- the merged «Настроить» window: the feed settings and the folder settings in one -->
+  <div class="vk-modal-layer" id="customize-layer" hidden>
+    <div class="vk-modal" role="dialog" aria-label="Настроить">
+      <div class="vk-modal-head">
+        <h2 class="vk-modal-title">Настроить</h2>
+        <button type="button" class="vk-link-button vk-modal-close" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="vk-modal-body vk-news-customize">
+        <section class="vk-news-customize-section" aria-label="Папки Telegram">
+          <div class="vk-news-settings-head">
+            <span class="vk-news-settings-title">Папки Telegram</span>
+            <button type="button" class="vk-link-button">Создать</button>
+          </div>
+          <div class="vk-home-blocks">
+            <ul class="vk-header-settings-blocks">
+              <li class="vk-header-settings-block">
+                <span class="vk-header-settings-block-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><path d="M6.5 4h11v16.5L12 16.5l-5.5 4V4Z"></path></svg>
+                </span>
+                <span class="vk-header-settings-block-info">
+                  <span class="vk-header-settings-block-title">Новые</span>
+                  <span class="vk-page-text-secondary">12 чатов</span>
+                </span>
+                <button type="button" class="vk-header-settings-icon" title="Выше" disabled="">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                </button>
+                <button type="button" class="vk-header-settings-icon vk-header-settings-down" title="Ниже">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                </button>
+                <button type="button" class="vk-header-settings-icon" title="Удалить">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </li>
+            </ul>
+          </div>
+          <p class="vk-news-settings-note">Это папки Telegram: они хранятся в вашем аккаунте и видны во всех ваших клиентах Telegram.</p>
+        </section>
+        <section class="vk-news-customize-section" aria-label="Настройка папок">
+          <div class="vk-news-settings-head">
+            <span class="vk-news-settings-title">Локальные папки</span>
+            <button type="button" class="vk-link-button">Создать</button>
+          </div>
+          <div class="vk-home-blocks">
+            <ul class="vk-header-settings-blocks">
+              <li class="vk-header-settings-block">
+                <span class="vk-header-settings-block-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><path d="M6.5 4h11v16.5L12 16.5l-5.5 4V4Z"></path></svg>
+                </span>
+                <span class="vk-header-settings-block-info">
+                  <span class="vk-header-settings-block-title">Кино</span>
+                  <span class="vk-page-text-secondary">1 чат</span>
+                </span>
+                <button type="button" class="vk-header-settings-icon" title="Изменить">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><path d="M4.5 19.5v-4l11-11 4 4-11 11h-4Z"></path><line x1="13" y1="7" x2="17" y2="11"></line></svg>
+                </button>
+                <button type="button" class="vk-header-settings-icon" title="Выше">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                </button>
+                <button type="button" class="vk-header-settings-icon vk-header-settings-down" title="Ниже">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                </button>
+                <button type="button" class="vk-header-settings-icon" title="Удалить">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </li>
+              <li class="vk-header-settings-block">
+                <span class="vk-header-settings-block-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><path d="M6.5 4h11v16.5L12 16.5l-5.5 4V4Z"></path></svg>
+                </span>
+                <span class="vk-header-settings-block-info">
+                  <span class="vk-header-settings-block-title">Локальная с длинным названием</span>
+                  <span class="vk-page-text-secondary">3 чата</span>
+                </span>
+                <button type="button" class="vk-header-settings-icon" title="Изменить">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><path d="M4.5 19.5v-4l11-11 4 4-11 11h-4Z"></path><line x1="13" y1="7" x2="17" y2="11"></line></svg>
+                </button>
+                <button type="button" class="vk-header-settings-icon" title="Выше">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                </button>
+                <button type="button" class="vk-header-settings-icon vk-header-settings-down" title="Ниже">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                </button>
+                <button type="button" class="vk-header-settings-icon" title="Удалить">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </li>
+            </ul>
+          </div>
+          <p class="vk-news-settings-note">Папки видны под вкладками «Сообщений», «Друзей», «Каналов» и «Новостей» — в каждом разделе свои элементы. Хранятся только в VKgram.</p>
+        </section>
+      </div>
+      <div class="vk-modal-foot">
+        <button type="button" class="vk-button">Готово</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,14 +1,16 @@
-import {createMemo, For, Match, Show, Switch} from 'solid-js';
+import {createMemo, createSignal, For, Match, onCleanup, onMount, Show, Switch} from 'solid-js';
 import type {Message, MessageEntity, MessageMedia, WebPage} from '@layer';
 import type {MyInputMessagesFilter} from '@appManagers/appMessagesManager';
 import formatNumber from '@helpers/number/formatNumber';
-import {openWebKProfile} from '@/vkgram/webk';
 import createChannelHistory from '@/vkgram/pages/channel/createChannelHistory';
+import VKChannelMediaModal from '@/vkgram/components/VKChannelMediaModal';
 import VKChannelPostMedia from '@/vkgram/pages/channel/VKChannelPostMedia';
+import {VKAudioRows} from '@/vkgram/components/VKAudioItem';
+import openTgLink, {openExternalLink} from '@/vkgram/utils/openTgLink';
 
-export type VKChannelMaterialsKind = 'media' | 'files' | 'links' | 'music' | 'voice';
+export type VKChannelMaterialsKind = 'media' | 'files' | 'links' | 'music';
 
-const KINDS: {[kind in VKChannelMaterialsKind]: {
+export const KINDS: {[kind in VKChannelMaterialsKind]: {
   title: string,
   filter: MyInputMessagesFilter,
   limit: number,
@@ -17,8 +19,7 @@ const KINDS: {[kind in VKChannelMaterialsKind]: {
   media: {title: 'Медиа', filter: 'inputMessagesFilterPhotoVideo', limit: 8, layout: 'grid'},
   files: {title: 'Файлы', filter: 'inputMessagesFilterDocument', limit: 3, layout: 'list'},
   links: {title: 'Ссылки', filter: 'inputMessagesFilterUrl', limit: 5, layout: 'links'},
-  music: {title: 'Музыка', filter: 'inputMessagesFilterMusic', limit: 3, layout: 'list'},
-  voice: {title: 'Голосовые сообщения', filter: 'inputMessagesFilterVoice', limit: 3, layout: 'list'}
+  music: {title: 'Музыка', filter: 'inputMessagesFilterMusic', limit: 3, layout: 'list'}
 };
 
 // a link of a message: the preview's page when there is one, else the first url in the text
@@ -38,12 +39,68 @@ function getLink(message: Message.message) {
 }
 
 /**
- * One material block of a channel («Медиа», «Файлы», «Ссылки», …): the latest
+ * The items of a materials block in one of the block's layouts — shared by the
+ * channel block and the «Показать все» window.
+ */
+export function VKChannelMediaItems(props: {kind: VKChannelMaterialsKind, messages: Message.message[]}) {
+  const config = KINDS[props.kind];
+  return (
+    <Switch>
+      <Match when={config.layout === 'grid'}>
+        <div class="vk-channel-media-grid">
+          <For each={props.messages}>
+            {(message) => <VKChannelPostMedia message={message} boxSize={120} />}
+          </For>
+        </div>
+      </Match>
+
+      <Match when={config.layout === 'list'}>
+        <Show
+          when={props.kind === 'music'}
+          fallback={
+            <div class="vk-channel-files-list">
+              <For each={props.messages}>
+                {(message) => <VKChannelPostMedia message={message} />}
+              </For>
+            </div>
+          }
+        >
+          <VKAudioRows messages={props.messages} />
+        </Show>
+      </Match>
+
+      <Match when={config.layout === 'links'}>
+        <ul class="vk-channel-links-list">
+          <For each={props.messages.map(getLink).filter(Boolean)}>
+            {(link) => (
+              <li>
+                <button
+                  type="button"
+                  class="vk-link-button vk-channel-link"
+                  onClick={async() => {
+                    if(!(await openTgLink(link.url))) openExternalLink(link.url);
+                  }}
+                >
+                  {link.title}
+                </button>
+              </li>
+            )}
+          </For>
+        </ul>
+      </Match>
+    </Switch>
+  );
+}
+
+/**
+ * One material block of a channel («Файлы», «Ссылки», «Музыка»), or — with
+ * `embedded` — just the content of «Медиа» inside the «Лента» tabs (no block
+ * frame, no title: the feed draws those): the latest
  * few items of the same server-side filter Web K's «Shared media» uses, and
  * the total from the same answer. A block with nothing to show is not drawn;
- * the rest of the material stays in Web K's own shared-media tab (the button).
+ * the rest of the material is Web K's own shared-media tab in a modal over the page («Показать все»).
  */
-export default function VKChannelMedia(props: {peerId: PeerId, kind: VKChannelMaterialsKind}) {
+export default function VKChannelMedia(props: {peerId: PeerId, kind: VKChannelMaterialsKind, embedded?: boolean}) {
   const config = KINDS[props.kind];
   const history = createChannelHistory({
     peerId: () => props.peerId,
@@ -51,53 +108,52 @@ export default function VKChannelMedia(props: {peerId: PeerId, kind: VKChannelMa
     pageSize: config.limit
   });
 
-  const items = createMemo(() => history.messages().slice(0, config.limit));
+  const items = createMemo(() => (history.messages().filter((m: any) => m._ === 'message') as Message.message[]).slice(0, config.limit));
   const total = () => history.count() ?? items().length;
 
+  const [isModalOpen, setModalOpen] = createSignal(false);
+
+  const content = () => (
+    <>
+      <VKChannelMediaItems kind={props.kind} messages={items()} />
+
+      <Show when={total() > items().length}>
+        <button type="button" class="vk-link-button vk-channel-more" onClick={() => setModalOpen(true)}>
+          Показать все
+        </button>
+      </Show>
+
+      <Show when={isModalOpen()}>
+        <VKChannelMediaModal
+          peerId={props.peerId}
+          kind={props.kind}
+          total={total()}
+          onClose={() => setModalOpen(false)}
+        />
+      </Show>
+    </>
+  );
+
   return (
-    <Show when={history.status() === 'loaded' && items().length}>
-      <section class={`vk-block vk-channel-${props.kind === 'media' ? 'media' : props.kind === 'links' ? 'links' : 'files'}`}>
-        <h2 class="vk-block-title">
-          {config.title}
-          <span class="vk-page-text-secondary vk-list-count"> {formatNumber(total(), 1)}</span>
-        </h2>
-
-        <Switch>
-          <Match when={config.layout === 'grid'}>
-            <div class="vk-channel-media-grid">
-              <For each={items()}>
-                {(message) => <VKChannelPostMedia message={message} boxSize={120} />}
-              </For>
-            </div>
-          </Match>
-
-          <Match when={config.layout === 'list'}>
-            <div class="vk-channel-files-list">
-              <For each={items()}>
-                {(message) => <VKChannelPostMedia message={message} />}
-              </For>
-            </div>
-          </Match>
-
-          <Match when={config.layout === 'links'}>
-            <ul class="vk-channel-links-list">
-              <For each={items().map(getLink).filter(Boolean)}>
-                {(link) => (
-                  <li>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer">{link.title}</a>
-                  </li>
-                )}
-              </For>
-            </ul>
-          </Match>
-        </Switch>
-
-        <Show when={total() > items().length}>
-          <button type="button" class="vk-link-button" onClick={() => openWebKProfile(props.peerId)}>
-            Показать все в «Сообщениях»
-          </button>
+    <Show
+      when={props.embedded}
+      fallback={
+        <Show when={history.status() === 'loaded' && items().length}>
+          <section class={`vk-block vk-channel-materials vk-channel-${props.kind}`}>
+            <h2 class="vk-block-title">
+              {config.title}
+              <span class="vk-page-text-secondary vk-list-count"> {formatNumber(total(), 1)}</span>
+            </h2>
+            {content()}
+          </section>
         </Show>
-      </section>
+      }
+    >
+      <Show when={history.status() !== 'loading'} fallback={<p class="vk-page-text vk-page-text-secondary">Загрузка…</p>}>
+        <Show when={items().length} fallback={<p class="vk-page-text vk-page-text-secondary">Нет медиа.</p>}>
+          {content()}
+        </Show>
+      </Show>
     </Show>
   );
 }

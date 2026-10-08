@@ -15,6 +15,7 @@ import {i18n, LangPackKey} from '@lib/langPack';
 import rootScope from '@lib/rootScope';
 import {BotInlineResult} from '@layer';
 import getAudioTitles from '@appManagers/utils/docs/getAudioTitles';
+import {formatDuration} from '@/vkgram/utils/audio';
 import {MyDocument} from '@appManagers/appDocsManager';
 import getDocumentInput from '@appManagers/utils/docs/getDocumentInput';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
@@ -97,7 +98,7 @@ export default function showMusicSearchPopup(options: MusicSearchPopupOptions): 
 
     const savedTracks = createMemo<Track[]>(() => {
       const q = query().trim().toLowerCase();
-      return (savedMusic() || []).map((doc) => ({
+      return (savedMusic() || []).filter((doc) => doc.type === 'audio' || doc.type === 'voice').map((doc) => ({
         key: 'saved-' + doc.id,
         doc,
         searchText: trackSearchText(doc),
@@ -197,11 +198,8 @@ export default function showMusicSearchPopup(options: MusicSearchPopupOptions): 
           getSize: () => 320
         }) as AudioElement;
         audio.classList.add('audio-48', 'search-super-item');
-        // Preview playback is a one-off here — there is no playlist to advance through.
         audio.listLoaderFactory = emptyMediaListLoaderFactory;
 
-        // AudioElement only binds a click on its toggle, so the rest of the row is free to mean
-        // "send this one" — matching how the audio picker behaves on Android.
         attachClickEvent(audio, (e) => {
           if(findUpClassName(e.target as HTMLElement, 'audio-toggle')) {
             return;

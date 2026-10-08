@@ -1,112 +1,74 @@
-import {createEffect, createMemo, For, onCleanup, Show} from 'solid-js';
-import type {Message, Reaction} from '@layer';
-import {usePeers} from '@stores/peers';
-import {AvatarNewTsx} from '@components/avatarNew';
-import wrapRichText from '@richTextProcessor/wrapRichText';
-import {getMiddleware} from '@helpers/middleware';
-import {formatDateAccordingToTodayNew} from '@helpers/date';
-import formatNumber from '@helpers/number/formatNumber';
-import {openWebKMessage} from '@/vkgram/webk';
-import VKChannelPostMedia from '@/vkgram/pages/channel/VKChannelPostMedia';
-
-const AVATAR_SIZE = 40;
+import {createMemo, createResource, createSignal} from 'solid-js';
+import type {Message} from '@layer';
+import MessageRenderer from '@/vkgram/components/MessageRenderer';
+import createPostMenu from '@/vkgram/pages/channel/createPostMenu';
+import {canForwardPost, openForwardPopup} from '@/vkgram/pages/channel/forwardPost';
 
 /**
  * One publication of a channel. `messages` is one post: a single message, or
  * an album (several messages sharing a `grouped_id`) whose caption sits on
  * one of them. All numbers and flags come from the message itself.
+ *
+ * The ⋮ next to the author (and, on desktop, a right click on the post) opens
+ * the post's menu — Telegram's actions through Web K (`createPostMenu`).
+ * «Переслать» under the post opens Web K's forward popup (`forwardPost`).
+ *
+ * Теперь использует MessageRenderer — унифицированный компонент для отображения
+ * сообщений как в чатах, так и в постах каналов.
  */
 export default function VKChannelPost(props: {
   messages: Message.message[],
-  isPinned?: boolean
+  isPinned?: boolean,
+  // only the post itself: no reactions, comments or «Переслать» (the block of «Моя страница»)
+  compact?: boolean
 }) {
-  const peers = usePeers();
-  // the message that carries the post's text, views and reactions
   const main = createMemo(() => props.messages.find((message) => message.message) ?? props.messages[0]);
-  const chat = () => peers[main().peerId] as {title?: string};
+  const [isCommentsOpen, setCommentsOpen] = createSignal(false);
 
-  const forwardedFrom = () => {
-    const fwd = main().fwd_from;
-    return fwd ? (fwd.from_name || fwd.post_author || '') : undefined;
+  // «Переслать» is shown where Web K lets the post be forwarded (a channel can forbid it)
+  const [canForward] = createResource(
+    () => props.messages,
+    (messages) => canForwardPost(messages).catch(() => false)
+  );
+
+  /**
+   * Opens Web K's own media viewer (the one the chat and «Shared media» use) on
+   * the message, with the same search context the chat gives it, so the viewer
+   * pages through the channel's photos and videos by itself.
+   */
+  const handleMediaClick = async(message: Message.message, target?: HTMLElement) => {
+    const {default: AppMediaViewer} = await import('@components/mediaViewer');
+    new AppMediaViewer()
+    .setSearchContext({
+      peerId: message.peerId,
+      inputFilter: {_: 'inputMessagesFilterPhotoVideo'},
+      useSearch: true
+    })
+    .openMedia({message, target});
   };
 
-  const time = () => formatDateAccordingToTodayNew(new Date(main().date * 1000));
-  const commentsCount = () => main().replies?.pFlags?.comments ? main().replies.replies : undefined;
-  const reactions = () => (main().reactions?.results || []).filter((result) => result.count > 0);
-
-  let textEl: HTMLDivElement;
-  createEffect(() => {
-    const message = main();
-    const middlewareHelper = getMiddleware();
-    onCleanup(() => middlewareHelper.destroy());
-
-    textEl.replaceChildren(
-      message.message ?
-        wrapRichText(message.message, {
-          entities: message.totalEntities ?? message.entities,
-          middleware: middlewareHelper.get()
-        }) :
-        ''
-    );
-  });
-
   return (
-    <article class="vk-channel-post" data-mid={main().mid}>
-      <header class="vk-channel-post-header">
-        <AvatarNewTsx peerId={main().peerId} size={AVATAR_SIZE} />
-        <div class="vk-channel-post-author">
-          <span class="vk-channel-post-name">{chat()?.title}</span>
-          <span class="vk-channel-post-date vk-page-text-secondary">
-            {time()}
-            <Show when={main().post_author}>{' · '}{main().post_author}</Show>
-            <Show when={main().edit_date && !main().pFlags.edit_hide}>{' · изменено'}</Show>
-            <Show when={props.isPinned}>{' · закреплено'}</Show>
-          </span>
-        </div>
-      </header>
-
-      <Show when={forwardedFrom() !== undefined}>
-        <div class="vk-channel-post-forward vk-page-text-secondary">
-          Репост{forwardedFrom() ? `: ${forwardedFrom()}` : ''}
-        </div>
-      </Show>
-
-      <div class="vk-channel-post-content vk-page-text" ref={textEl} />
-
-      <For each={props.messages}>
-        {(message) => <VKChannelPostMedia message={message} />}
-      </For>
-
-      <footer class="vk-channel-post-meta vk-page-text-secondary">
-        <Show when={main().views}>
-          <span title="Просмотры">👁 {formatNumber(main().views, 1)}</span>
-        </Show>
-        <Show when={commentsCount() !== undefined}>
-          <span title="Комментарии">💬 {commentsCount()}</span>
-        </Show>
-        <For each={reactions()}>
-          {(result) => (
-            <span class="vk-channel-post-reaction" title="Реакции">
-              {getReactionGlyph(result.reaction)} {formatNumber(result.count, 1)}
-            </span>
-          )}
-        </For>
-        <button
-          type="button"
-          class="vk-link-button vk-channel-post-open"
-          onClick={() => openWebKMessage(main().peerId, main().mid)}
-        >
-          Открыть в «Сообщениях»
-        </button>
-      </footer>
-    </article>
+    <MessageRenderer
+      message={props.messages}
+      variant="channel-post"
+      isPinned={props.isPinned}
+      showAvatar={true}
+      showAuthor={true}
+      showViews={true}
+      showReactions={!props.compact}
+      hideFooter={props.compact}
+      showComments={!props.compact}
+      isCommentsOpen={isCommentsOpen()}
+      onCommentsToggle={() => setCommentsOpen((open) => !open)}
+      onMediaClick={handleMediaClick}
+      onForward={!props.compact && canForward() ? () => openForwardPopup(props.messages) : undefined}
+      contextMenu={{
+        onCreate: (element) => createPostMenu({
+          element,
+          getMessages: () => props.messages,
+          getMain: main
+        })
+      }}
+    />
   );
-}
-
-// only what the reaction itself says: an emoji, or the paid star; a custom
-// emoji has no text form here, so just its count is shown
-function getReactionGlyph(reaction: Reaction) {
-  if(reaction._ === 'reactionEmoji') return reaction.emoticon;
-  if(reaction._ === 'reactionPaid') return '⭐';
-  return '';
 }

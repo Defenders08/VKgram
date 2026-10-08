@@ -89,7 +89,8 @@ const [currentCard, setCurrentCard] = (() => {
   const stored = (import.meta.hot?.data as any)?.currentCardSignal as Signal<CardSpec | null> | undefined;
   if(stored) return stored;
   const pair = createRoot(() => createSignal<CardSpec | null>(null));
-  if(import.meta.hot) (import.meta.hot.data as any).currentCardSignal = pair;
+  // `data` is absent outside vite dev (vitest defines `hot` without it)
+  if(import.meta.hot?.data) (import.meta.hot.data as any).currentCardSignal = pair;
   return pair;
 })();
 

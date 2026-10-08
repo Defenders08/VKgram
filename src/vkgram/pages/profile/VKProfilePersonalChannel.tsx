@@ -5,19 +5,26 @@ import {useChat} from '@stores/peers';
 import {AvatarNewTsx} from '@components/avatarNew';
 import {toastNew} from '@components/toast';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
-import {openWebKChat, openWebKLeftTab} from '@/vkgram/webk';
+import {openWebKPopupTab} from '@/vkgram/webk';
+import {openVKChannelPage} from '@/vkgram/pages/channel/openChannel';
+import {openVKChannelCreate} from '@/vkgram/pages/channel/VKChannelEditModal';
+import VKChannelPickerModal from '@/vkgram/components/VKChannelPickerModal';
 
 /**
  * Personal channel of «Моя страница». Data: `personal_channel_id` of the
  * full user + the channel from Web K's peer store. Actions: the same picker
  * and appProfileManager.updatePersonalChannel as Web K's edit profile tab;
- * creating a channel is Web K's own new-channel flow.
+ * creating a channel is Web K's own new-channel tab, in Web K's modal.
+ * `bare` — content only, no block and no title of its own: «Настройки» holds
+ * the piece inside its own headed item.
  */
-export default function VKProfilePersonalChannel(props: {channelId?: ChatId}) {
+export default function VKProfilePersonalChannel(props: {channelId?: ChatId, blockId?: string, bare?: boolean}) {
   const managers = rootScope.managers;
   const channel = useChat(() => props.channelId) as () => Chat.channel;
   const username = createMemo(() => getPeerActiveUsernames(channel())[0]);
   const [busy, setBusy] = createSignal(false);
+  // the channels offered by the picker; the window is open while there are some
+  const [pickerIds, setPickerIds] = createSignal<ChatId[]>();
 
   const update = async(channelId?: ChatId) => {
     setBusy(true);
@@ -31,7 +38,7 @@ export default function VKProfilePersonalChannel(props: {channelId?: ChatId}) {
     }
   };
 
-  // Web K's picker: only public channels you own can be personal
+  // only public channels you own can be personal (the list is Web K's own answer)
   const pick = async() => {
     let channelIds: ChatId[];
     try {
@@ -47,18 +54,23 @@ export default function VKProfilePersonalChannel(props: {channelId?: ChatId}) {
       return;
     }
 
-    const peerIds = channelIds.map((id) => id.toPeerId(true));
-    const {default: showPickUserPopup} = await import('@components/popups/pickUser');
-    showPickUserPopup({
-      titleLangKey: 'EditProfile.PersonalChannel.PickerTitle',
-      peerType: ['custom'],
-      getMoreCustom: async() => ({result: peerIds, isEnd: true}),
-      noSearch: true,
-      onSelect: (chosen) => {
-        const chatId = chosen[0].peerId.toChatId();
-        if(chatId !== props.channelId) update(chatId);
+    setPickerIds(channelIds);
+  };
+
+  // the VKgram window «Новый канал» (name, description, the same `createChannel` call as Web K's
+  // own tab); if it cannot be opened, Web K's «New Channel» tab in its popup takes its place
+  const create = async() => {
+    try {
+      openVKChannelCreate();
+    } catch(err) {
+      console.error('VKgram: the new-channel window failed, falling back to Web K tab', err);
+      try {
+        await openWebKPopupTab('AppNewChannelTab', () => ({}));
+      } catch(err2) {
+        console.error('VKgram: Web K new-channel tab failed too', err2);
+        toastNew({langPackKey: 'Error.AnError'});
       }
-    });
+    }
   };
 
   const unlink = async() => {
@@ -76,9 +88,8 @@ export default function VKProfilePersonalChannel(props: {channelId?: ChatId}) {
     update(undefined);
   };
 
-  return (
-    <section class="vk-block vk-profile-section" aria-labelledby="vk-profile-channel-title">
-      <h2 id="vk-profile-channel-title" class="vk-block-title">Личный канал</h2>
+  const content = (
+    <>
       <Show
         when={props.channelId}
         fallback={
@@ -86,7 +97,7 @@ export default function VKProfilePersonalChannel(props: {channelId?: ChatId}) {
             <p class="vk-page-text vk-page-text-secondary">У вас пока нет личного канала.</p>
             <div class="vk-profile-actions">
               <button type="button" class="vk-button" disabled={busy()} onClick={pick}>Выбрать канал</button>
-              <button type="button" class="vk-button vk-button-secondary" onClick={() => openWebKLeftTab('AppNewChannelTab', () => ({}))}>
+              <button type="button" class="vk-button vk-button-secondary" onClick={create}>
                 Создать канал
               </button>
             </div>
@@ -103,13 +114,38 @@ export default function VKProfilePersonalChannel(props: {channelId?: ChatId}) {
           </div>
         </div>
         <div class="vk-profile-actions">
-          <button type="button" class="vk-button" onClick={() => openWebKChat(props.channelId.toPeerId(true))}>
+          <button type="button" class="vk-button" onClick={() => openVKChannelPage(props.channelId.toPeerId(true))}>
             Открыть канал
           </button>
           <button type="button" class="vk-button vk-button-secondary" disabled={busy()} onClick={pick}>Сменить</button>
           <button type="button" class="vk-button vk-button-secondary" disabled={busy()} onClick={unlink}>Отвязать</button>
         </div>
       </Show>
+
+      <Show when={pickerIds()}>
+        {(ids) => (
+          <VKChannelPickerModal
+            title="Выбор личного канала"
+            channelIds={ids()}
+            currentId={props.channelId}
+            onSelect={(chatId) => {
+              if(chatId !== props.channelId) update(chatId);
+            }}
+            onClose={() => setPickerIds(undefined)}
+          />
+        )}
+      </Show>
+    </>
+  );
+
+  if(props.bare) {
+    return content;
+  }
+
+  return (
+    <section class="vk-block vk-profile-section" aria-labelledby="vk-profile-channel-title" data-vk-home-block={props.blockId}>
+      <h2 id="vk-profile-channel-title" class="vk-block-title">Личный канал</h2>
+      {content}
     </section>
   );
 }
