@@ -4,6 +4,7 @@
 Проект создан на основе **Telegram Web K** и переделывает привычный Telegram в духе старого VK.
 
 **Статья на моём сайте:** [defenders08.tech/vkgram](https://defenders08.tech/2026/10/09/vkgram-%d0%b2%d0%b5%d0%b1-%d0%ba%d0%bb%d0%b8%d0%b5%d0%bd%d1%82-%d0%b4%d0%bb%d1%8f-telegram-%d0%b2-%d1%81%d1%82%d0%b8%d0%bb%d0%b5-vk/)
+**Попробовать:** [vkgram.defenders08.tech](https://vkgram.defenders08.tech)
 ## Возможности
 
 -  **Новости** — лента публикаций и историй.
