@@ -11,6 +11,7 @@ import VKSettingsLanguage from '@/vkgram/pages/settings/VKSettingsLanguage';
 import VKSettingsSessions from '@/vkgram/pages/settings/VKSettingsSessions';
 import VKSettingsConfig from '@/vkgram/pages/settings/VKSettingsConfig';
 import VKSettingsMobileNav from '@/vkgram/pages/settings/VKSettingsMobileNav';
+import VKSettingsSidebarMenu from '@/vkgram/pages/settings/VKSettingsSidebarMenu';
 import VKSettingsAutoDownload from '@/vkgram/pages/settings/VKSettingsAutoDownload';
 import {openVKCacheLimit} from '@/vkgram/components/VKCacheLimitModal';
 import VKSettingsStorage from '@/vkgram/pages/settings/VKSettingsStorage';
@@ -176,6 +177,12 @@ const CATEGORIES: VKSettingCategory[] = [{
   group: 'vkgram',
   items: [],
   content: VKSettingsMobileNav
+}, {
+  id: 'sidebar',
+  title: 'Левое меню',
+  group: 'vkgram',
+  items: [],
+  content: VKSettingsSidebarMenu
 }, {
   id: 'app',
   title: 'Приложение',

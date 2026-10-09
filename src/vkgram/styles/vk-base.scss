@@ -746,6 +746,19 @@ html:not(.is-vkgram):not(.vkgram-off) body > #auth-pages {
   }
 }
 
+// * «Настройки» → «Левое меню»: the sections of the left menu as the rows of the
+// * page-blocks list, but the toggle on a row is a checkbox, not the buttons
+
+.vkgram {
+  .vk-sidebar-menu {
+    // the checkbox row takes the whole line: [glyph] [☐ name…]
+    .vk-header-settings-block .vk-check {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+  }
+}
+
 // * Header search (dropdown of the local results)
 
 .vk-header-search {

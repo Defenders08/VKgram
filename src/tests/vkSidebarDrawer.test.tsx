@@ -1,6 +1,7 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {render} from 'solid-js/web';
 import VKSidebar from '@/vkgram/components/VKSidebar';
+import {resetVKSidebarMenuSettings, setVKSidebarMenuSectionVisible} from '@/vkgram/pages/settings/sidebarMenu';
 
 const mocks = vi.hoisted(() => ({
   confirmVKLogout: vi.fn(),
@@ -46,6 +47,7 @@ vi.mock('@/vkgram/components/VKMiniPlayer', () => ({
 const dispose: (() => void)[] = [];
 afterEach(() => {
   while(dispose.length) dispose.pop()?.();
+  resetVKSidebarMenuSettings();
 });
 
 const mount = (props: Parameters<typeof VKSidebar>[0]) => {
@@ -111,5 +113,42 @@ describe('VKSidebar drawer variant', () => {
     expect(rowTitles(root)).toContain('Страница');
     expect(root.querySelector('.vk-sidebar-item-icon')).toBeNull();
     expect(root.querySelector('.vk-sidebar-item-badge')).toBeNull();
+  });
+});
+
+describe('VKSidebar and «Левое меню» (the hidden sections)', () => {
+  it('a hidden section does not stand in the desktop menu and comes back when shown', () => {
+    setVKSidebarMenuSectionVisible('audio', false);
+    const root = mount({active: 'news', onSectionChange: vi.fn(), withLogout: true});
+    expect(rowTitles(root)).not.toContain('Аудиозаписи');
+    // the others keep their places
+    expect(rowTitles(root)).toContain('Новости');
+
+    // the section stays hidden until it is shown again — the page itself does not move
+    setVKSidebarMenuSectionVisible('audio', true);
+    expect(rowTitles(root)).toContain('Аудиозаписи');
+  });
+
+  it('a hidden section leaves the drawer too, the groups fold with their rows', () => {
+    setVKSidebarMenuSectionVisible('news', false);
+    const root = mount({active: 'messages', onSectionChange: vi.fn(), withLogout: true, variant: 'drawer'});
+    expect(rowTitles(root)).not.toContain('Новости');
+    expect(rowTitles(root)).toContain('Сообщения');
+    expect(rowTitles(root)).toContain('Выйти');
+  });
+
+  it('hiding «Страница» takes the desktop row out, the drawer keeps its profile header', () => {
+    setVKSidebarMenuSectionVisible('profile', false);
+    const desktop = mount({active: 'news', onSectionChange: vi.fn(), withLogout: true});
+    expect(rowTitles(desktop)).not.toContain('Страница');
+
+    const drawer = mount({active: 'news', onSectionChange: vi.fn(), withLogout: true, variant: 'drawer'});
+    expect(drawer.querySelector('.vk-menu-header-name')?.textContent).toBe('Иван Петров');
+  });
+
+  it('«Настройки» cannot be hidden — it is the way back into the settings', () => {
+    setVKSidebarMenuSectionVisible('settings', false);
+    const root = mount({active: 'settings', onSectionChange: vi.fn(), withLogout: true});
+    expect(rowTitles(root)).toContain('Настройки');
   });
 });

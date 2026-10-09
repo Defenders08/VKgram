@@ -5,6 +5,7 @@ import {useUser} from '@stores/peers';
 import {AvatarNewTsx} from '@components/avatarNew';
 import getPeerActiveUsernames from '@appManagers/utils/peers/getPeerActiveUsernames';
 import {getVKSections, VKSection, VKSectionId} from '@/vkgram/sections';
+import {vkSidebarMenuSettings} from '@/vkgram/pages/settings/sidebarMenu';
 import {confirmVKLogout} from '@/vkgram/logout';
 import createMessagesUnread, {formatUnreadBadge} from '@/vkgram/hooks/createMessagesUnread';
 import VKMiniPlayer from '@/vkgram/components/VKMiniPlayer';
@@ -54,6 +55,15 @@ export default function VKSidebar(props: VKSidebarProps) {
   };
   // the number on «Сообщения»; the other items have none
   const getBadge = (id: VKSectionId) => id === 'messages' && messagesUnread().count > 0 ? messagesUnread() : undefined;
+
+  // «Настройки» → «Левое меню»: the sections the user took out of the menu do not
+  // stand in it — on the desktop and in the drawer alike; the drawer's empty groups
+  // (and their divider) leave with their rows
+  const shown = (items: VKSection[]) => {
+    const hidden = vkSidebarMenuSettings().hidden;
+    return items.filter((item) => !hidden.includes(item.id));
+  };
+  const drawerGroups = () => DRAWER_GROUPS.map((group) => shown(group)).filter((group) => group.length);
 
   const renderItems = (items: VKSection[]) => (
     <ul class="vk-sidebar-list">
@@ -111,8 +121,8 @@ export default function VKSidebar(props: VKSidebarProps) {
         <VKMiniPlayer variant="drawer" />
       </Show>
 
-      <Show when={isDrawer()} fallback={renderItems(MAIN_SECTIONS)}>
-        <For each={DRAWER_GROUPS}>
+      <Show when={isDrawer()} fallback={renderItems(shown(MAIN_SECTIONS))}>
+        <For each={drawerGroups()}>
           {(group) => (
             <>
               {renderItems(group)}
@@ -124,7 +134,7 @@ export default function VKSidebar(props: VKSidebarProps) {
       <Show when={!isDrawer()}>
         <div class="vk-sidebar-divider" />
       </Show>
-      {renderItems(BOTTOM_SECTIONS)}
+      {renderItems(shown(BOTTOM_SECTIONS))}
 
       <Show when={props.withLogout}>
         {/* the drawer pins «Выйти» (with its divider) to the bottom edge of the panel */}

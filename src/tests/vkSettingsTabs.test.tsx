@@ -29,6 +29,7 @@ vi.mock('@/vkgram/pages/settings/VKSettingsLanguage', () => ({default: stub}));
 vi.mock('@/vkgram/pages/settings/VKSettingsSessions', () => ({default: stub}));
 vi.mock('@/vkgram/pages/settings/VKSettingsConfig', () => ({default: stub}));
 vi.mock('@/vkgram/pages/settings/VKSettingsMobileNav', () => ({default: stub}));
+vi.mock('@/vkgram/pages/settings/VKSettingsSidebarMenu', () => ({default: stub}));
 vi.mock('@/vkgram/pages/settings/VKGiftsPrivacy', () => ({default: stub}));
 vi.mock('@/vkgram/pages/profile/VKProfileEditForm', () => ({default: stub}));
 vi.mock('@/vkgram/pages/profile/VKProfileBirthday', () => ({default: stub}));
@@ -68,10 +69,11 @@ describe('VKPageSettings', () => {
     const root = mount(() => <VKPageSettings />);
 
     // only the mobile strip is mounted, the rail is not
-    expect(root.querySelectorAll('[role="tab"]')).toHaveLength(7);
+    expect(root.querySelectorAll('[role="tab"]')).toHaveLength(8);
     // VKgram's own block is the second one: its tabs stand last on the strip
     expect(root.querySelectorAll('[role="tab"]')[5].textContent).toBe('Навбар');
-    expect(root.querySelectorAll('[role="tab"]')[6].textContent).toBe('Приложение');
+    expect(root.querySelectorAll('[role="tab"]')[6].textContent).toBe('Левое меню');
+    expect(root.querySelectorAll('[role="tab"]')[7].textContent).toBe('Приложение');
     expect(root.querySelector('.vk-settings-mobile-tabs')).toBeTruthy();
     expect(root.querySelector('.vk-settings-side')).toBeNull();
 
@@ -108,8 +110,9 @@ describe('VKPageSettings', () => {
     expect(blocks[0].querySelector('.vk-block-title')?.textContent).toBe('Телеграм');
     expect(blocks[0].querySelectorAll('[role="tab"]')).toHaveLength(5);
     expect(blocks[1].querySelector('.vk-block-title')?.textContent).toBe('VKgram');
-    expect(blocks[1].querySelectorAll('[role="tab"]')).toHaveLength(2);
+    expect(blocks[1].querySelectorAll('[role="tab"]')).toHaveLength(3);
     expect(blocks[1].textContent).toContain('Навбар');
+    expect(blocks[1].textContent).toContain('Левое меню');
     expect(blocks[1].textContent).toContain('Приложение');
     // the panel is named by the rail's tabs
     expect(openPanel(root)?.getAttribute('aria-labelledby')).toBe(
@@ -143,5 +146,16 @@ describe('VKPageSettings', () => {
     expect(tab(root, 'Профиль').getAttribute('aria-selected')).toBe('false');
     expect(openPanel(root)?.id).toBe('vk-settings-panel-navbar');
     expect(openPanel(root)?.getAttribute('aria-labelledby')).toContain('vk-settings-mobile-tab-navbar');
+  });
+
+  it('opens the left menu category as one piece', () => {
+    stubWidth(false);
+    const root = mount(() => <VKPageSettings />);
+
+    tab(root, 'Левое меню').click();
+    expect(tab(root, 'Левое меню').getAttribute('aria-selected')).toBe('true');
+    expect(tab(root, 'Профиль').getAttribute('aria-selected')).toBe('false');
+    expect(openPanel(root)?.id).toBe('vk-settings-panel-sidebar');
+    expect(openPanel(root)?.getAttribute('aria-labelledby')).toContain('vk-settings-mobile-tab-sidebar');
   });
 });
