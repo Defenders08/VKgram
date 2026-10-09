@@ -65,6 +65,15 @@ export type VKNewsRules = {
  * any channel can be newer than it, and the channel that could hold the
  * newest unread post is the next one to be read. So a feed of a hundred
  * channels asks only for the few that are really recent.
+ *
+ * A post that arrives live (a channel that has already been read publishes)
+ * does not jump to the top of the list: it waits behind the page's «Новые
+ * посты» button (`pendingCount` / `releasePending`) until the user asks.
+ * The same happens to a live post of a channel the feed has not read yet —
+ * the feed reads that channel at once (the old way — a jump of the frontier,
+ * the feed hiding behind «Загрузка новостей…» and reading itself anew — would
+ * blank the screen), but only the post the arrival promised is held; the
+ * channel's older posts join the feed in their places.
  */
 export default function createNewsFeed(options: {
   // the user's channels: the page owns them, it needs the same list for its tabs
@@ -195,21 +204,143 @@ export default function createNewsFeed(options: {
   }));
 
   // nothing newer than this can still be unread
-  const frontier = createMemo(() => infos().reduce((max, info) => info.hasMore ? Math.max(max, info.bound) : max, -Infinity));
+  const liveFrontier = createMemo(() => infos().reduce((max, info) => info.hasMore ? Math.max(max, info.bound) : max, -Infinity));
+
+  // Once the feed has shown a post, a live post in a channel the feed has not
+  // read yet pushes that channel's «could be as new as» date up — and the
+  // frontier with it, which would hide the posts on the screen behind
+  // «Загрузка новостей…» for nothing. From the first show on, the frontier
+  // only moves down (an older page has loaded): what the user reads never
+  // leaves. The channel with the arrival is read at once instead (see the
+  // «seen top dates» effect), and its new posts wait behind the button.
+  const [frozenFrontier, setFrozenFrontier] = createSignal<number>();
+  const frontier = createMemo(() => {
+    const live = liveFrontier();
+    const frozen = frozenFrontier();
+    return frozen === undefined ? live : Math.min(live, frozen);
+  });
+
+  // The post objects live as long as their messages do: a post whose messages
+  // are the very same objects keeps its post object. Any other update (a live
+  // post anywhere, a view count) rebuilds every list from the top down — and
+  // without this the screen's own posts would be rebuilt with them.
+  let postCache = new Map<string, VKNewsPost>();
 
   const safePosts = createMemo<VKNewsPost[]>(() => {
     const limit = frontier();
-    return groupPosts(merged().filter((message) => message.date >= limit)).map((post) => ({
-      ...post,
+    const grouped = groupPosts(merged().filter((message) => message.date >= limit));
+    const nextCache = new Map<string, VKNewsPost>();
+    const posts = grouped.map((post) => {
       // a message id is only unique inside its channel
-      key: `${post.messages[0].peerId}_${post.id}`
-    }));
+      const key = `${post.messages[0].peerId}_${post.id}`;
+      const cached = postCache.get(key);
+      const stable = cached && sameMessages(cached.messages, post.messages) ? cached : {...post, key};
+      nextCache.set(key, stable);
+      return stable;
+    });
+    postCache = nextCache;
+    return posts;
   });
+
+  const sameMessages = (a: Message.message[], b: Message.message[]) =>
+    a.length === b.length && a.every((message, index) => message === b[index]);
 
   // * how much of it is shown
   const [limit, setLimit] = createSignal(PAGE);
   createEffect(on(options.rules, () => setLimit(PAGE), {defer: true}));
-  const visible = createMemo(() => isReady() ? safePosts().slice(0, limit()) : []);
+
+  // * posts that arrive while the feed is on screen are held back
+  // A live post (an update for a channel that has already been read) does not
+  // jump to the top of its own accord: it waits behind the «Новые посты»
+  // button until the user asks for it. What loads before the feed is first
+  // shown — the first pages, the channels read late — shows at once, the way
+  // it always did; so do the older pages the feed reads while filling up.
+  const [heldKeys, setHeldKeys] = createSignal<string[]>([]);
+  // (the held posts are taken out before the slice: a waiting post must not
+  // push the last post on the screen out of the window)
+  const visible = createMemo(() => isReady() ?
+    safePosts().filter((post) => !heldKeys().includes(post.key)).slice(0, limit()) :
+    []);
+
+  const [isShown, setIsShown] = createSignal(false);
+  // another feed (a tab, a folder, other filters) starts from nothing: only
+  // what arrives after it has shown a post of its own waits behind the button
+  // (this runs before the «has shown» effect below, so a feed that already
+  // holds posts of its own is shown at once, not held)
+  createEffect(on(options.rules, () => {
+    setHeldKeys([]);
+    setIsShown(false);
+    setFrozenFrontier(undefined);
+    seenTopDates.clear();
+    expectedUntil.clear();
+    isTopDatesRecorded = false;
+  }, {defer: true}));
+  createEffect(() => {
+    if(visible().length) {
+      setIsShown(true);
+      setFrozenFrontier((frozen) => frozen ?? untrack(liveFrontier));
+    }
+  });
+
+  // The top message date each channel's dialog has been seen with. A jump up
+  // (or a channel that appeared) while the feed is on the screen is a live
+  // post in a channel the feed has not read: the frozen frontier no longer
+  // makes the feed reload itself, so the channel is read here, at once — and
+  // the posts the arrival promised (its date and newer) go behind the button
+  // like the posts of the channels already read do.
+  const seenTopDates = new Map<PeerId, number>();
+  const expectedUntil = new Map<PeerId, number>();
+  let isTopDatesRecorded = false;
+  createEffect(() => {
+    if(!isShown()) return;
+    const isInitial = !isTopDatesRecorded;
+    isTopDatesRecorded = true;
+    for(const dialog of channels()) {
+      const date = getDialogLastMessage(dialog)?.date ?? -Infinity;
+      const seen = seenTopDates.get(dialog.peerId);
+      seenTopDates.set(dialog.peerId, date);
+      if(isInitial || seen !== undefined && date <= seen) continue;
+      expectedUntil.set(dialog.peerId, date);
+      untrack(() => {
+        if(!sources.has(dialog.peerId)) {
+          watch(dialog.peerId);
+          ensureSource(dialog.peerId);
+        }
+      });
+    }
+  });
+
+  // every live message of a channel has a bigger id than the channel ever had
+  // before it (an older page the feed reads holds only smaller ones)
+  createEffect(on(merged, (messages, prev) => {
+    if(!prev?.length || !isShown()) return;
+
+    const seen = new Map<PeerId, number>();
+    for(const message of prev) {
+      const max = seen.get(message.peerId);
+      if(max === undefined || message.mid > max) seen.set(message.peerId, message.mid);
+    }
+
+    const fresh = messages.filter((message) => {
+      const max = seen.get(message.peerId);
+      // a live post of a channel the feed has read
+      if(max !== undefined) return message.mid > max;
+      // the first batch of a channel read for a live arrival: the posts the
+      // arrival promised (the rest of the batch is the channel's past)
+      const until = expectedUntil.get(message.peerId);
+      return until !== undefined && message.date >= until;
+    });
+    if(!fresh.length) return;
+
+    const keys = groupPosts(fresh).map((post) => `${post.messages[0].peerId}_${post.id}`);
+    setHeldKeys((held) => [...held, ...keys.filter((key) => !held.includes(key))]);
+  }, {defer: true}));
+
+  // a held post whose messages are gone (deleted, the channel left) is not waiting any more
+  const pendingCount = createMemo(() => {
+    const shown = new Set(safePosts().map((post) => post.key));
+    return heldKeys().filter((key) => shown.has(key)).length;
+  });
 
   // The list is keyed by the ids only, so a page of older posts (or a new view
   // count) doesn't re-create the posts already on screen along with their media.
@@ -272,6 +403,10 @@ export default function createNewsFeed(options: {
       if(isEnd() || limit() > safePosts().length) return;
       setLimit((value) => value + PAGE);
     },
+    // posts that arrived live and wait behind the «Новые посты» button
+    pendingCount,
+    /** Shows the posts waiting behind the «Новые посты» button. */
+    releasePending: () => setHeldKeys([]),
     // channels that could not be read
     failedCount: () => infos().filter((info) => info.isFailed).length,
     retry: () => infos().forEach((info) => {

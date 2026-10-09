@@ -13,6 +13,7 @@ import VKNewsStories from '@/vkgram/pages/news/VKNewsStories';
 import VKNewsNotifications from '@/vkgram/pages/news/VKNewsNotifications';
 import VKChannelPost from '@/vkgram/pages/channel/VKChannelPost';
 import VKEmptyState from '@/vkgram/components/VKEmptyState';
+import VKIcon from '@/vkgram/components/VKIcons';
 import VKTabs, {VKTabItem} from '@/vkgram/components/VKTabs';
 import VKLocalFolders from '@/vkgram/components/VKLocalFolders';
 import {vkLocalFolders} from '@/vkgram/pages/localFolders/settings';
@@ -217,6 +218,13 @@ export default function VKPageNews() {
     onCleanup(() => observer.disconnect());
   });
 
+  // where the feed's posts start: the released posts appear there, the button brings the user to them
+  let postsTop: HTMLDivElement;
+  const showPendingPosts = () => {
+    feed.releasePending();
+    postsTop.scrollIntoView({behavior: 'smooth', block: 'start'});
+  };
+
   return (
     <div class="vk-page vk-news">
       <Show when={isFolderModalOpen()}>
@@ -234,6 +242,14 @@ export default function VKPageNews() {
           <div class="vk-news-main">
             <VKNewsStories hidePeople={vkNewsSettings().hidePeople} />
             <VKNewsNotifications />
+
+            {/* live posts wait behind this button instead of jumping into the feed above where the user reads */}
+            <Show when={feed.pendingCount() > 0}>
+              <button type="button" class="vk-button vk-news-pending" onClick={showPendingPosts}>
+                <VKIcon name="up" size={14} />
+                Показать новые посты
+              </button>
+            </Show>
 
             <section class="vk-block vk-page-block" aria-labelledby="vk-news-title">
               {/* no visible heading: the page is named by the menu; kept for screen readers */}
@@ -285,6 +301,7 @@ export default function VKPageNews() {
           </Show>
 
           <div
+            ref={postsTop}
             id={`vk-news-panel-${tab()}`}
             role="tabpanel"
             aria-labelledby={`vk-news-mobile-tab-${tab()} vk-news-desktop-tab-${tab()}`}

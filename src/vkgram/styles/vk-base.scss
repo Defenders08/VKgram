@@ -4620,6 +4620,22 @@ $vk-audio-glyph-pause: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2
   .vk-news-action {
     margin-top: $vk-gap;
   }
+
+  // «Новые посты»: live posts wait behind it instead of jumping into the feed
+  .vk-news-pending {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 10px 12px;
+    border-color: $vk-border;
+    background-color: $vk-block-bg;
+
+    &:hover:not(:disabled) {
+      background-color: $vk-hover-bg;
+    }
+  }
 }
 
 // * «Настройки ленты» of «Новости»: a button at the right end of the tabs and a small panel dropping from it
