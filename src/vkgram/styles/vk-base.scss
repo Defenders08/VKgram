@@ -14479,18 +14479,35 @@ $vk-motion: .16s;
 
   // * «Next» + «Log in by QR Code»: one split button, like the VK «Обсуждение» one —
   // * a wide flat blue main part and a narrow part on its right with the QR glyph,
-  // * a thin darker divider between them. Both are tagged by text in `VKLoginHost`
-  // * (the phone step only). The QR part is the card's next flex child; a negative
-  // * top margin lifts it onto the line of «Next», at its right end.
-  .vk-login-box .input-wrapper:has([data-vk-cta]) {
+  // * a thin lighter divider between them. Both halves are tagged by text in
+  // * `VKLoginHost` (the phone step only) and moved there into `.input-wrapper`,
+  // * next to each other — so the wrapper turns into a two-column grid for that
+  // * one row: the halves are its columns, and the fields and everything the flow
+  // * adds after them (the «Продолжить на русском» row included) span both columns,
+  // * each on its own line below. No negative margins: the halves share the row
+  // * because they are neighbours, whatever sits between them elsewhere.
+  .vk-login-box .auth-card .input-wrapper:has(> [data-vk-cta]) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
     margin-bottom: 0 !important;
+
+    // a field takes the whole row of its own
+    > :is(.input-field, .input-select, .input-select-wrapper) {
+      grid-column: 1 / -1;
+    }
+
+    // so does everything that is not a half — the language row the flow mounts
+    // after the buttons: below the split, over its own gap
+    > :not(.input-field):not(.input-select):not(.input-select-wrapper):not([data-vk-cta]):not([data-vk-qr-link]) {
+      grid-column: 1 / -1;
+      margin-top: $vk-gap-small;
+    }
   }
 
   // the project's button corners (`$vk-radius`) and blue, forced: the quiet-action
   // rules above (transparent, link colour) would otherwise win on the QR part
   .vk-login-box .auth-card .btn-primary[data-vk-cta] {
-    align-self: flex-start;
-    width: 50%;
     height: 30px;
     margin: 0 !important;
     border: 1px solid $vk-blue-dark !important;
@@ -14509,10 +14526,8 @@ $vk-motion: .16s;
     display: flex !important;
     align-items: center;
     justify-content: center;
-    align-self: flex-end;
-    width: 50%;
     height: 30px;
-    margin: -30px 0 0 !important;
+    margin: 0 !important;
     padding: 0 !important;
     border: 1px solid $vk-blue-dark !important;
     border-left: 1px solid rgba(255, 255, 255, .4) !important;

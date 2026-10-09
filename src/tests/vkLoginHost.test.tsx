@@ -1,6 +1,6 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
-import {mountVKLoginFlow} from '@/vkgram/pages/VKLoginHost';
+import {mountVKLoginFlow, placeSplitQrHalves} from '@/vkgram/pages/VKLoginHost';
 import {disposeActiveAuthFlow} from '@/pages/mountAuthFlow';
 import {currentCard} from '@/pages/authFlow';
 
@@ -115,5 +115,54 @@ describe('mountVKLoginFlow', () => {
     // the first instance was already torn down by the remount
     expect(() => first()).not.toThrow();
     expect(document.getElementById('vkgram-login-root')).toBeNull();
+  });
+});
+
+describe('placeSplitQrHalves', () => {
+  // the phone card as the flow renders it: the QR action is a sibling OF
+  // `.input-wrapper`, the language row is the wrapper's own last child
+  const mountPhoneCard = () => {
+    document.body.innerHTML = `
+      <div class="auth-card">
+        <div class="input-wrapper">
+          <div class="input-field"></div>
+          <button class="btn-primary btn-color-primary" data-vk-cta>Далее</button>
+          <div><button class="btn-primary">Продолжить на English</button></div>
+        </div>
+        <button class="btn-primary" data-vk-qr-link>Вход по QR</button>
+      </div>`;
+    return document.querySelector<HTMLElement>('.auth-card')!;
+  };
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('moves the QR half next to «Далее», not through the language row', () => {
+    const card = mountPhoneCard();
+    placeSplitQrHalves(card);
+
+    const cta = card.querySelector('[data-vk-cta]')!;
+    const qr = card.querySelector('[data-vk-qr-link]')!;
+    expect(qr.parentElement).toBe(cta.parentElement);
+    expect(qr.previousElementSibling).toBe(cta);
+    // the language row stays below the pair, never between the halves
+    expect(cta.nextElementSibling).toBe(qr);
+    expect(qr.nextElementSibling!.tagName).toBe('DIV');
+  });
+
+  it('is a no-op once the halves sit together (the observer re-runs it)', () => {
+    const card = mountPhoneCard();
+    placeSplitQrHalves(card);
+    const qr = card.querySelector('[data-vk-qr-link]')!;
+    placeSplitQrHalves(card);
+    expect(card.querySelector('[data-vk-qr-link]')).toBe(qr);
+    expect(qr.previousElementSibling).toBe(card.querySelector('[data-vk-cta]'));
+  });
+
+  it('does nothing without both halves', () => {
+    document.body.innerHTML = '<div class="auth-card"><div class="input-wrapper"></div></div>';
+    const card = document.querySelector<HTMLElement>('.auth-card')!;
+    expect(() => placeSplitQrHalves(card)).not.toThrow();
   });
 });

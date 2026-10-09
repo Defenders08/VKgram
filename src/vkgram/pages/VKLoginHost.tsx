@@ -103,9 +103,31 @@ const QR_TEXT = /qr|scan|отсканир/i;
 const QR_WAIT_MS = 8000;
 
 /**
+ * Puts the two halves of the split button («Далее» + «Вход по QR») next to each
+ * other: the flow renders the QR action as a sibling OF `.input-wrapper`, after
+ * it, and whatever the flow mounts between the two («Продолжить на русском»,
+ * once it has loaded — it is the wrapper's own last child) used to end up under
+ * the lifted QR half. The button is moved INTO the wrapper, right after
+ * «Далее», so the halves are plain neighbours of one row and everything after
+ * them takes its own line below.
+ *
+ * Idempotent — the MutationObserver that drives it re-runs this on its own
+ * mutation once, and a re-rendered flow button is moved again. Solid removes a
+ * node from whatever parent it has, so the moved button still unmounts cleanly.
+ */
+export function placeSplitQrHalves(root: HTMLElement) {
+  const cta = root.querySelector<HTMLElement>('[data-vk-cta]');
+  const qr = root.querySelector<HTMLElement>('[data-vk-qr-link]');
+  if(!cta || !qr) return;
+  if(qr.parentElement === cta.parentElement && qr.previousElementSibling === cta) return;
+  cta.after(qr);
+}
+
+/**
  * Marks the quiet/primary buttons of the phone card by their text, attributes
- * only (the flow's DOM is not moved): the passkey action is hidden by the skin,
- * the «Next» button and the «Log in by QR Code» one are joined into one group.
+ * only: the passkey action is hidden by the skin, the «Next» button and the
+ * «Log in by QR Code» one are joined into one group (placed as one row by
+ * `placeSplitQrHalves`).
  */
 function tagActions(root: HTMLElement, state: LoginState) {
   const buttons = root.querySelectorAll<HTMLElement>('.btn-primary');
@@ -207,6 +229,7 @@ function LoginBox() {
       const next = detectLoginState(body);
       if(next) setState(next);
       tagActions(body, next ?? state());
+      placeSplitQrHalves(body);
 
       const isQr = (next ?? state()) === 'qr' && QR_TEXT.test(body.textContent || '');
       const code = isQr ? findQrCode(body) : null;
