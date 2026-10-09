@@ -4944,15 +4944,16 @@ $vk-audio-glyph-pause: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2
     }
 
     // Web K's input field (the same component, the same logic) dressed as a VKgram one, like the rows of
-    // the profile: the caption in a fixed grey column on the left (the width of `dt` there), a plain 1px
-    // field like `.vk-search` filling the rest; on a narrow screen the caption goes above the field.
+    // the profile: the caption above the field, a plain 1px field like `.vk-search` filling the row. The
+    // caption must not share a line with the field: side by side a long one («Имя пользователя
+    // (необязательно)») ran over the input, so it stands above it at every width and wraps when long.
     // Web K draws its floating caption, its thick rounded focus ring and its height with rules of its own
     // of unknown weight, so inside the dialog these must win: `!important` is on purpose and stays here.
     .input-field {
       display: flex !important;
-      flex-direction: row !important;
-      align-items: flex-start !important;
-      gap: $vk-gap;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 3px;
       margin: 0 !important;
       padding: 0 !important;
       background: none !important;
@@ -4993,13 +4994,17 @@ $vk-audio-glyph-pause: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2
       label {
         position: static !important;
         order: -1;
-        flex: 0 0 130px !important;
+        flex: none !important;
         box-sizing: border-box !important;
-        width: 130px !important;
+        width: auto !important;
         max-width: none !important;
         margin: 0 !important;
-        // the first line of the caption stands level with the text in the field
-        padding: 6px 0 0 !important;
+        padding: 0 !important;
+        // Web K's caption is a fixed-height one-liner (`nowrap`) — standing above the
+        // field it must wrap instead of running over it
+        height: auto !important;
+        white-space: normal !important;
+        overflow-wrap: break-word;
         border: none !important;
         border-radius: 0 !important;
         box-shadow: none !important;
@@ -5013,8 +5018,8 @@ $vk-audio-glyph-pause: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2
 
       &-input {
         box-sizing: border-box !important;
-        flex: 1 1 auto !important;
-        width: auto !important;
+        flex: none !important;
+        width: 100% !important;
         min-width: 0 !important;
         height: auto !important;
         min-height: 0 !important;
@@ -5059,21 +5064,10 @@ $vk-audio-glyph-pause: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2
     .vk-modal {
       width: 100%;
 
-      .input-field {
-        flex-direction: column !important;
-        gap: 3px;
-
-        label {
-          flex: none !important;
-          width: auto !important;
-          padding: 0 !important;
-          font-size: 11px !important;
-        }
-
-        .input-field-input {
-          flex: none !important;
-          width: 100% !important;
-        }
+      // the stacked battery above is the layout at every width; a phone only
+      // takes the smaller caption back
+      .input-field label {
+        font-size: 11px !important;
       }
 
       // 16px: a smaller text in a field makes iOS zoom the page when the field gets the focus
@@ -9828,17 +9822,17 @@ $vk-file-size: 36px;
   }
 }
 
-// * A labelled select row of a `VKModal` (the birthday): the caption on the left, like the input fields
+// * A labelled select row of a `VKModal` (the birthday): the caption above the
+// * field, like the input fields — a caption must not share a line with its field
 
 .vkgram .vk-modal {
   .vk-field-row {
     display: flex;
-    align-items: flex-start;
-    gap: $vk-gap;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
 
     label {
-      flex: 0 0 130px;
-      padding-top: 6px;
       color: $vk-text-secondary;
       font-size: $vk-font-size;
       line-height: $vk-line-height;
@@ -9846,8 +9840,9 @@ $vk-file-size: 36px;
   }
 
   .vk-select {
-    flex: 1 1 auto;
+    flex: none;
     box-sizing: border-box;
+    width: 100%;
     min-width: 0;
     padding: 5px 8px;
     border: 1px solid $vk-border;
@@ -9864,19 +9859,8 @@ $vk-file-size: 36px;
   }
 
   @media (max-width: 600px) {
-    .vk-field-row {
-      flex-direction: column;
-      gap: 3px;
-
-      label {
-        flex: none;
-        padding: 0;
-        font-size: 11px;
-      }
-
-      .vk-select {
-        width: 100%;
-      }
+    .vk-field-row label {
+      font-size: 11px;
     }
   }
 }
@@ -11136,8 +11120,9 @@ html.is-vkgram {
 // * look of the VKgram dialogs («Редактирование профиля», «Дата рождения»).
 // * The field battery is the dialog's own one (`.vk-modal .input-field`, the
 // * «Моя страница» section above) repeated for the Web K windows: the caption
-// * in a fixed grey column on the left, a plain 1px field filling the rest,
-// * the focus and the error only on the field itself. The names of the sections
+// * above the field (it must not share a line with it — a long one ran over
+// * the input), a plain 1px field filling the row, the focus and the error
+// * only on the field itself. The names of the sections
 // * of a settings window take the black bold of `.vk-settings-legend` — the
 // * question heading of the privacy dialogs — instead of the link color.
 // * Looks only, as in every layer above.
@@ -11147,9 +11132,9 @@ html.is-vkgram {
   .popup .input-field,
   .vk-profile-edit .input-field {
     display: flex !important;
-    flex-direction: row !important;
-    align-items: flex-start !important;
-    gap: $vk-gap;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 3px;
     margin: 0 0 $vk-gap !important;
     padding: 0 !important;
     background: none !important;
@@ -11190,13 +11175,17 @@ html.is-vkgram {
     label {
       position: static !important;
       order: -1;
-      flex: 0 0 130px !important;
+      flex: none !important;
       box-sizing: border-box !important;
-      width: 130px !important;
+      width: auto !important;
       max-width: none !important;
       margin: 0 !important;
-      // the first line of the caption stands level with the text in the field
-      padding: 6px 0 0 !important;
+      padding: 0 !important;
+      // Web K's caption is a fixed-height one-liner (`nowrap`) — standing above the
+      // field it must wrap instead of running over it
+      height: auto !important;
+      white-space: normal !important;
+      overflow-wrap: break-word;
       border: none !important;
       border-radius: 0 !important;
       box-shadow: none !important;
@@ -11211,8 +11200,8 @@ html.is-vkgram {
 
     &-input {
       box-sizing: border-box !important;
-      flex: 1 1 auto !important;
-      width: auto !important;
+      flex: none !important;
+      width: 100% !important;
       min-width: 0 !important;
       height: auto !important;
       min-height: 0 !important;
@@ -11240,9 +11229,8 @@ html.is-vkgram {
 
     // a select standing where the field stands (a date picker and the like) fills the row too
     select {
-      flex: 1 1 auto !important;
-      width: auto !important;
-      min-width: 0 !important;
+      flex: none !important;
+      width: 100% !important;
     }
 
     // the username is taken / not valid
@@ -11292,22 +11280,11 @@ html.is-vkgram {
   }
 
   @media (max-width: 600px) {
-    .popup .input-field,
-    .vk-profile-edit .input-field {
-      flex-direction: column !important;
-      gap: 3px;
-
-      label {
-        flex: none !important;
-        width: auto !important;
-        padding: 0 !important;
-        font-size: 11px !important;
-      }
-
-      .input-field-input {
-        flex: none !important;
-        width: 100% !important;
-      }
+    // the stacked battery above is the layout at every width; a phone only
+    // takes the smaller caption back
+    .popup .input-field label,
+    .vk-profile-edit .input-field label {
+      font-size: 11px !important;
     }
   }
 }
@@ -11860,8 +11837,7 @@ html.is-vkgram {
   }
 
   .vk-input {
-    flex: 1 1 auto;
-    width: auto;
+    flex: none;
   }
 
   .vk-textarea {
@@ -12153,11 +12129,6 @@ html.is-vkgram {
     font-weight: bold;
     line-height: 1;
     user-select: none;
-  }
-
-  // a field in a stack (not in a `.vk-field-row`) fills the width of the stack
-  .vk-field-stack > .vk-input {
-    width: 100%;
   }
 
   .vk-channel-create-label {
